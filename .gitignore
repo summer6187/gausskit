@@ -1,0 +1,44 @@
+# Emacs related files:
+*~
+
+# vim related files
+*.swp
+
+# testcase folder
+testcases/
+data/*
+
+# Python
+*.ipynb_checkpoints
+*.pyc
+.pytest_cache
+
+# build stuff
+build
+lib
+bin
+dist
+docker
+*.egg-info
+site
+
+# vscode
+.vscode
+
+# Output Files
+*.hdf5
+*.pick
+
+# Test Directories
+test_run
+
+# doc
+doc/
+
+# ignore
+*.ignore
+ignore/
+
+# releases
+*.zip
+
