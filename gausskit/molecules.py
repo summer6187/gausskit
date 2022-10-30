@@ -114,15 +114,17 @@ class Molecules(Atoms):
         # set if TS from frequency check
         self._ts = None
         if self.frequencies.any():
-            if self.frequencies.all() > 0:
+            if (self.frequencies > 0).all():
                 self._ts = False
             elif len(self.frequencies) > 1:
-                if self.frequencies[0] < 0 and self.frequencies[1:].all() > 0:
+                sorted_frequancies = self.frequencies.copy()
+                sorted_frequancies.sort()
+                if sorted_frequancies[0] < 0 and sorted_frequancies[1:].all() > 0:
                     self._ts = True
                 else:
                     print("More than one imag freq! Please check!")
             else:
-                if self.frequencies[0] < 0:
+                if sorted_frequancies[0] < 0:
                     self._ts = True
         else:
             print("No frequency (TS not possible.)")
