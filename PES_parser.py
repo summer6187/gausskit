@@ -54,6 +54,22 @@ def get_PES_energy(name, PES_method_dict):
 
     return E_0K
 
+def get_PES_ts(name, PES_method_dict):
+    ZPE_method = PES_method_dict["ZPE_method"]
+
+    # match method in name_method list
+    name_method_list = list(name.keys())
+    ZPE_method = match_method(name_method_list, ZPE_method)
+
+
+    # single atom have no ZPE
+    if len(name[name_method_list[0]].get_chemical_symbols()) == 1:
+        _ts = False
+    else:
+        _ts = name[ZPE_method].ts
+
+    return _ts
+
 if __name__ == "__main__":
     config = configparser.ConfigParser()
 
@@ -95,6 +111,7 @@ if __name__ == "__main__":
 
             name_list = []
             energy_list = []
+            ts_list = []
             
             # parse every item in this PES
             for PES_num in PES_num_list:
@@ -104,37 +121,43 @@ if __name__ == "__main__":
                 
                 # parse the energy calculation of this item
                 final_E = 0
+                # if there is any ts in a line, then it is ts
+                final_ts = []
                 for n, item in enumerate(item_list):
                     # add the first
                     if n == 0:
                         final_E += get_PES_energy(database[item], PES_method_dict)
-                    
-                    # parse the sign
+                        final_ts.append(get_PES_ts(database[item], PES_method_dict))
+                    # parse the equation
                     if item == "+":
                         final_E += get_PES_energy(database[item_list[n+1]], PES_method_dict)
                     elif item == "-":
                         final_E -= get_PES_energy(database[item_list[n+1]], PES_method_dict)
+                    else:
+                        # if the item is not +/-, then parse the item and get if_ts
+                        final_ts.append(get_PES_ts(database[item], PES_method_dict))
                 energy_list.append(final_E)
+                # if there is any ts in a line, then it is ts
+                if True in final_ts:
+                    ts_list.append(True)
+                else:
+                    ts_list.append(False)
             energy_list = np.array(energy_list)
 
             # get relative energy regarding to the first final_E
             energy_list = energy_list - energy_list[0]
             energy_list *= Hartree/(kcal/mol)
-            for name, energy in zip(name_list,energy_list):
-                print(f"  {name:30} {energy:.4f}")
-
-
-
-                
-
-
             
+            # print the energy results
+            print_reverse = False
+            for n, (name, energy, ts) in enumerate(zip(name_list,energy_list,ts_list)):
+                if ts:
+                    print(f"  {n}. {name:35} {energy:.4f}                         (ts)")
+                    ts_energy = energy
+                    ts_n = n
+                    print_reverse = True
+                elif print_reverse:
+                    print(f"  {n}. {name:35} {energy:.4f}   {ts_energy-energy:.4f}  (backwards)     (ref: {ts_n})")
+                else:
+                    print(f"  {n}. {name:35} {energy:.4f}")
 
-        
-        
-
-
-        
-
-
-    
