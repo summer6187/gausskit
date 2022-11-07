@@ -3,6 +3,7 @@ from .log_parser import read_log_energy, read_log_parameters
 from ase.io.gaussian import read_gaussian_out
 from .get_anharm_input import read_harm_freq, read_anharm_matrix, read_harm_freq_another
 import numpy as np
+import os
 
 class Molecules(Atoms):
     """
@@ -38,6 +39,7 @@ class Molecules(Atoms):
         self._method = None
         self._basis = None
         self._ts = None
+        self.logpath = None
 
     @property
     def electronic_energy(self):
@@ -186,5 +188,12 @@ class Molecules(Atoms):
         
         # set methods
         new_mol.method = method
+
+        # set log path
+        new_mol.set_filepath(filename)
         return new_mol
 
+    def set_filepath(self, filepath):
+        logpath = os.path.abspath(filepath)
+        self.logpath = logpath
+        return
