@@ -3,6 +3,7 @@ import configparser
 import pickle
 import numpy as np
 from ase.units import Hartree, kcal, mol
+from gausskit.multiwellkit.run_thermo import run_PES_thermo
 import collections
 import json
 
@@ -41,12 +42,14 @@ def get_item_energy(name, PES_method_dict):
     # get energies
     Eele = name[Eele_method].electronic_energy
 
+    # get ZPE
+    ZPE_method = match_method(name_method_list, ZPE_method)
+    ZPE_Mols = name[ZPE_method]
     # single atom have no ZPE
     if len(name[Eele_method].get_chemical_symbols()) == 1:
         ZPE = 0
     else:
         # if not single atom parse ZPE
-        ZPE_method = match_method(name_method_list, ZPE_method)
         if anharm_method:
             ZPE = name[ZPE_method].anharm_zpe
         else:
@@ -54,7 +57,7 @@ def get_item_energy(name, PES_method_dict):
     
     E_0K = Eele + ZPE
 
-    return E_0K
+    return E_0K, ZPE_Mols
 
 def get_item_ts(name, PES_method_dict):
     ZPE_method = PES_method_dict["ZPE_method"]
@@ -93,9 +96,10 @@ def parse_this_PES(database, PES_dict, PES_num_list, PES_method_dict, verbose=Fa
                 plus_minus = "-"
             else:
                 PES_item_dict[item] = {}
-                PES_item_dict[item]["mols"] = database[item]
                 PES_item_dict[item]["plus_minus"] = plus_minus
-                PES_item_dict[item]["item_energy"] = get_item_energy(database[item], PES_method_dict) * Hartree/(kcal/mol)
+                E_0K, ZPE_Mols = get_item_energy(database[item], PES_method_dict)
+                PES_item_dict[item]["Mols"] = ZPE_Mols
+                PES_item_dict[item]["item_energy"] = E_0K * Hartree/(kcal/mol)
                 item_ts = get_item_ts(database[item], PES_method_dict)
                 PES_item_dict[item]["ts"] = item_ts
                 if item_ts == True:
@@ -139,7 +143,7 @@ def parse_this_PES(database, PES_dict, PES_num_list, PES_method_dict, verbose=Fa
     if verbose:
         for PES_num in PES_data:
             item_string_list = []
-            for PES_item in  PES_data[PES_num]["PES_items"]:
+            for PES_item in PES_data[PES_num]["PES_items"]:
                 item_string_list.append(PES_data[PES_num]["PES_items"][PES_item]["plus_minus"])
                 item_string_list.append(PES_item)
             item_string = " ".join(item_string_list)[2:] # omit first "+ " sign
@@ -196,7 +200,13 @@ if __name__ == "__main__":
             PES_num_list.sort()
 
             PES_data = parse_this_PES(database, PES_dict, PES_num_list, PES_method_dict, verbose=True)
+            PES_datasets[section] = PES_data
 
-#     # thermo calc
-#     for _thermo in thermo_list:
+    # thermo calc
+    print("thermo calculation")
+    for _thermo_PES in thermo_list:
+        PES_data = PES_datasets[_thermo_PES]
+        thermo_path = "testcases/thermo_" + _thermo_PES
+        print("thermo calculation of", _thermo_PES)
+        run_PES_thermo(PES_data, thermo_path=thermo_path, verbose=True)
 

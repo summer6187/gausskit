@@ -128,6 +128,9 @@ class Molecules(Atoms):
             else:
                 if sorted_frequancies[0] < 0:
                     self._ts = True
+        # single atom have no ts
+        elif len(self.get_chemical_symbols()) == 1:
+            self._ts = False
         else:
             print("No frequency (TS not possible.)")
 
