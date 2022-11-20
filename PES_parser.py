@@ -171,8 +171,9 @@ if __name__ == "__main__":
         PES_method = config_section_map(config, "Method")
         Eele_method = PES_method["eele"]
         ZPE_method = PES_method["zpe"]
-        anharm_method = bool(PES_method["anharm"])
+        anharm_method = config.getboolean("Method", "anharm")
         thermo_list = list(PES_method["thermo"].split())
+        thermo_tunneling = config.getboolean("Method", "thermo_tunneling")
         
         # load database
         filename = PES_method["database"]
@@ -184,6 +185,10 @@ if __name__ == "__main__":
         "Eele_method": Eele_method,
         "ZPE_method": ZPE_method,
         "anharm_method": anharm_method,
+    }
+
+    thermo_method_dict = {
+        "thermo_tunneling": thermo_tunneling
     }
 
     PES_datasets = {}
@@ -208,5 +213,5 @@ if __name__ == "__main__":
         PES_data = PES_datasets[_thermo_PES]
         thermo_path = "testcases/thermo_" + _thermo_PES
         print("thermo calculation of", _thermo_PES)
-        run_PES_thermo(PES_data, thermo_path=thermo_path, verbose=True)
+        run_PES_thermo(PES_data, thermo_method_dict, thermo_path=thermo_path, verbose=True)
 
