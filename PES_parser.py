@@ -3,6 +3,8 @@ import configparser
 import pickle
 import numpy as np
 from ase.units import Hartree, kcal, mol
+import collections
+import json
 
 
 def config_section_map(config, section):
@@ -27,7 +29,7 @@ def match_method(name_method_list, method):
             matched_method = name_method
     return matched_method
 
-def get_PES_energy(name, PES_method_dict):
+def get_item_energy(name, PES_method_dict):
     Eele_method = PES_method_dict["Eele_method"]
     ZPE_method = PES_method_dict["ZPE_method"]
     anharm_method = PES_method_dict["anharm_method"]
@@ -54,7 +56,7 @@ def get_PES_energy(name, PES_method_dict):
 
     return E_0K
 
-def get_PES_ts(name, PES_method_dict):
+def get_item_ts(name, PES_method_dict):
     ZPE_method = PES_method_dict["ZPE_method"]
 
     # match method in name_method list
@@ -69,6 +71,86 @@ def get_PES_ts(name, PES_method_dict):
         _ts = name[ZPE_method].ts
 
     return _ts
+
+def parse_this_PES(database, PES_dict, PES_num_list, PES_method_dict, verbose=False):
+    
+    # init PES_data
+    PES_data = {}
+    
+    # parse every item in this PES
+    for PES_num in PES_num_list:
+        item_string = PES_dict[str(PES_num)]
+        item_string = "+ " + item_string
+        item_list = item_string.split()
+
+        PES_item_dict = {}
+        plus_minus = "+"
+        for n, item in enumerate(item_list):
+            final_ts = False
+            if item == "+":
+                plus_minus = "+"
+            elif item == "-":
+                plus_minus = "-"
+            else:
+                PES_item_dict[item] = {}
+                PES_item_dict[item]["mols"] = database[item]
+                PES_item_dict[item]["plus_minus"] = plus_minus
+                PES_item_dict[item]["item_energy"] = get_item_energy(database[item], PES_method_dict) * Hartree/(kcal/mol)
+                item_ts = get_item_ts(database[item], PES_method_dict)
+                PES_item_dict[item]["ts"] = item_ts
+                if item_ts == True:
+                    final_ts = True
+
+        # PES_items = collections.namedtuple("PES_items", PES_item_dict.keys())(**PES_item_dict)
+        PES_items = PES_item_dict
+        PES_data[str(PES_num)] = {}
+        PES_data[str(PES_num)]["PES_items"] = PES_items
+        PES_data[str(PES_num)]["final_ts"] = final_ts
+        PES_energy = 0
+        for n,item in enumerate(PES_data[str(PES_num)]["PES_items"]):            
+            if PES_data[str(PES_num)]["PES_items"][item]["plus_minus"] == "+":
+                PES_energy += PES_data[str(PES_num)]["PES_items"][item]["item_energy"]
+            elif PES_data[str(PES_num)]["PES_items"][item]["plus_minus"] == "-":
+                PES_energy -= PES_data[str(PES_num)]["PES_items"][item]["item_energy"]
+            else:
+                print(f"Warning! no plus_minus found for this item {item}")
+                exit()
+            
+        PES_data[str(PES_num)]["PES_energy"] = PES_energy
+        
+    # get reverse energy
+    _reverse = False
+    for n, PES_num in enumerate(PES_data):
+        if n == 0:
+            PES_ref_energy = PES_data[PES_num]["PES_energy"]
+        PES_data[PES_num]["PES_energy"] -= PES_ref_energy
+        if PES_data[PES_num]["final_ts"]:
+            PES_data[PES_num]["reverse"] = 0
+            PES_data[PES_num]["reverse_ref"] = PES_num 
+            ts_energy = PES_data[PES_num]["PES_energy"]
+            ts_n = PES_num
+            _reverse = True
+        elif _reverse:
+            PES_data[PES_num]["reverse"] = ts_energy-PES_data[PES_num]["PES_energy"]
+            PES_data[PES_num]["reverse_ref"] = ts_n
+        else:
+            PES_data[PES_num]["reverse"] = 0
+            PES_data[PES_num]["reverse_ref"] = PES_num
+    if verbose:
+        for PES_num in PES_data:
+            item_string_list = []
+            for PES_item in  PES_data[PES_num]["PES_items"]:
+                item_string_list.append(PES_data[PES_num]["PES_items"][PES_item]["plus_minus"])
+                item_string_list.append(PES_item)
+            item_string = " ".join(item_string_list)[2:] # omit first "+ " sign
+            energy = PES_data[PES_num]["PES_energy"]
+            reverse_energy = PES_data[PES_num]["reverse"]
+            reverse_ref = PES_data[PES_num]["reverse_ref"]
+
+            print(f"  {PES_num:>2}. {item_string:35} {energy:>8.3f}  {reverse_energy:>8.3f}  (backwards)  ref:{reverse_ref}")
+    
+    return PES_data
+
 
 if __name__ == "__main__":
     config = configparser.ConfigParser()
@@ -86,6 +168,7 @@ if __name__ == "__main__":
         Eele_method = PES_method["eele"]
         ZPE_method = PES_method["zpe"]
         anharm_method = bool(PES_method["anharm"])
+        thermo_list = list(PES_method["thermo"].split())
         
         # load database
         filename = PES_method["database"]
@@ -99,65 +182,21 @@ if __name__ == "__main__":
         "anharm_method": anharm_method,
     }
 
+    PES_datasets = {}
     # parse the rest sections
     for section in config.sections():
         # parse one PES
-        if section != "Method":
+        if section != "Method" and "PES" in section:
             print(section)
+            # init PES_datasets for each PES_n
+            PES_datasets[section] = {}
             PES_dict = config_section_map(config, section)
             PES_num_list = PES_dict.keys()
             PES_num_list = [int(num) for num in PES_num_list]
             PES_num_list.sort()
 
-            name_list = []
-            energy_list = []
-            ts_list = []
-            
-            # parse every item in this PES
-            for PES_num in PES_num_list:
-                item_string = PES_dict[str(PES_num)]
-                name_list.append(item_string)
-                item_list = item_string.split()
-                
-                # parse the energy calculation of this item
-                final_E = 0
-                # if there is any ts in a line, then it is ts
-                final_ts = []
-                for n, item in enumerate(item_list):
-                    # add the first
-                    if n == 0:
-                        final_E += get_PES_energy(database[item], PES_method_dict)
-                        final_ts.append(get_PES_ts(database[item], PES_method_dict))
-                    # parse the equation
-                    if item == "+":
-                        final_E += get_PES_energy(database[item_list[n+1]], PES_method_dict)
-                    elif item == "-":
-                        final_E -= get_PES_energy(database[item_list[n+1]], PES_method_dict)
-                    else:
-                        # if the item is not +/-, then parse the item and get if_ts
-                        final_ts.append(get_PES_ts(database[item], PES_method_dict))
-                energy_list.append(final_E)
-                # if there is any ts in a line, then it is ts
-                if True in final_ts:
-                    ts_list.append(True)
-                else:
-                    ts_list.append(False)
-            energy_list = np.array(energy_list)
+            PES_data = parse_this_PES(database, PES_dict, PES_num_list, PES_method_dict, verbose=True)
 
-            # get relative energy regarding to the first final_E
-            energy_list = energy_list - energy_list[0]
-            energy_list *= Hartree/(kcal/mol)
-            
-            # print the energy results
-            print_reverse = False
-            for n, (name, energy, ts) in enumerate(zip(name_list,energy_list,ts_list)):
-                if ts:
-                    print(f"  {n}. {name:35} {energy:.4f}                         (ts)")
-                    ts_energy = energy
-                    ts_n = n
-                    print_reverse = True
-                elif print_reverse:
-                    print(f"  {n}. {name:35} {energy:.4f}   {ts_energy-energy:.4f}  (backwards)     (ref: {ts_n})")
-                else:
-                    print(f"  {n}. {name:35} {energy:.4f}")
+#     # thermo calc
+#     for _thermo in thermo_list:
 
