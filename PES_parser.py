@@ -1,4 +1,4 @@
-import sys
+import sys, os
 import configparser
 import pickle
 import numpy as np
@@ -173,6 +173,7 @@ if __name__ == "__main__":
         ZPE_method = PES_method["zpe"]
         anharm_method = config.getboolean("Method", "anharm")
         thermo_list = list(PES_method["thermo"].split())
+        thermo_dir = PES_method["thermo_dir"]
         thermo_tunneling = config.getboolean("Method", "thermo_tunneling")
         
         # load database
@@ -211,7 +212,7 @@ if __name__ == "__main__":
     print("thermo calculation")
     for _thermo_PES in thermo_list:
         PES_data = PES_datasets[_thermo_PES]
-        thermo_path = "testcases/thermo_" + _thermo_PES
+        thermo_path = os.path.join(thermo_dir, "thermo_" + _thermo_PES)
         print("thermo calculation of", _thermo_PES)
         run_PES_thermo(PES_data, thermo_method_dict, thermo_path=thermo_path, verbose=True)
 
