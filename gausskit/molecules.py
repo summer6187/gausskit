@@ -2,6 +2,7 @@ from ase import Atoms
 from .log_parser import read_log_energy, read_log_parameters
 from ase.io.gaussian import read_gaussian_out
 from .get_anharm_input import read_harm_freq, read_anharm_matrix, read_harm_freq_another
+from .hindrot import Hinderedrotor, read_hindrot
 import numpy as np
 import os
 
@@ -96,7 +97,7 @@ class Molecules(Atoms):
     
     @property
     def hinderedrotor(self):
-        """return vibrational frequencies"""
+        """return hindrot"""
         return self._hinderedrotor
     
     @ hinderedrotor.setter
@@ -202,6 +203,11 @@ class Molecules(Atoms):
         # set methods
         new_mol.method = method
 
+        # set hindrotor
+        if hindrot:
+            hinderedrotor = read_hindrot(filename)
+            new_mol.hinderedrotor = hinderedrotor
+
         # set log path
         new_mol.set_filepath(filename)
         return new_mol
@@ -210,12 +216,3 @@ class Molecules(Atoms):
         logpath = os.path.abspath(filepath)
         self.logpath = logpath
         return
-
-class Hinderedrotor:
-    def __init__(self, reduced_mom, rotating_group, corrected_vib) -> None:
-        self._reduced_mom = reduced_mom
-        self._rotating_group = rotating_group
-        self._corrected_vib = corrected_vib
-    
-    def __call__(self) -> list:
-        return self.reduced_mom

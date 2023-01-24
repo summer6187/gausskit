@@ -406,18 +406,25 @@ def read_log_parameters(
             parameters["freq"] = False
         
         for item in parameter_line.split():
+            found_method = False
             if item.lower() == "g4":
+                found_method = True
                 parameters["method"] = "G4"
                 parameters["basis"] = ""
                 break
             elif "/" in item:
+                found_method = True
                 parameters["method"] = item.split("/")[0]
                 parameters["basis"] = item.split("/")[-1]
+        if not found_method:
+            parameters["method"] = result_block.split("\\")[4]
+            parameters["basis"] = result_block.split("\\")[5]
         
         parameters_list.append(parameters)
     
     overall_parameters = {}
     _anharm = False
+    _hindrot = False
     _freq = False
     _g4 = False
     _method = ""
@@ -485,6 +492,7 @@ if __name__ == "__main__":
     freq = parameters["freq"]
     method = parameters["method"]
     basis = parameters["basis"]
+    hindrot = parameters["hindrot"]
 
     print(parameters)
     energy = read_log_energy(filename, 
