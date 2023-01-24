@@ -1,0 +1,37 @@
+[Method]
+Eele: G4
+ZPE: MP2
+Anharm: True
+Hinderedrotor: True
+database: testcases/database.pickle
+
+[PES_1]
+1: HCFC133a + OH
+2: HCFC133a-OH_ts
+3: Radical133a + H2O
+
+[PES_2]
+1: HCFC133a + Cl
+2: HCFC133a-Cl_ts
+3: Radical133a + HCl
+
+[PES_3]
+1: HCFC132b + OH
+2: HCFC132b-OH_ts
+3: Radical132b + H2O
+
+[PES_4]
+1: HCFC132b + Cl
+2: HCFC132b-Cl_ts
+3: Radical132b + HCl
+
+[PES_5]
+1: Alkoxyl
+2: Alkoxyl-HLeave_ts
+3: Alkoxyl-HLeave-CClF2C(O)Cl + H
+4: Alkoxyl-ClLeave_ts
+5: Alkoxyl-ClLeave-CF2ClCH0 + Cl
+6: Alkoxyl-RLeave_ts
+7: Alkoxyl-RLeave-Radical + Alkoxyl-RLeave-C(O)HCl
+8: Alkoxyl-HLeave_O2_ts - O2
+9: Alkoxyl-HLeave-CClF2C(O)Cl + HO2 - O2

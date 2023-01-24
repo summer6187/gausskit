@@ -172,6 +172,7 @@ if __name__ == "__main__":
         Eele_method = PES_method["eele"]
         ZPE_method = PES_method["zpe"]
         anharm_method = config.getboolean("Method", "anharm")
+        hindrot_method = config.getboolean("Method", "hinderedrotor")
         thermo_list = list(PES_method["thermo"].split())
         thermo_dir = PES_method["thermo_dir"]
         thermo_tunneling = config.getboolean("Method", "thermo_tunneling")
@@ -189,7 +190,8 @@ if __name__ == "__main__":
     }
 
     thermo_method_dict = {
-        "thermo_tunneling": thermo_tunneling
+        "thermo_tunneling": thermo_tunneling,
+        "hindrot_method": hindrot_method,
     }
 
     PES_datasets = {}

@@ -95,6 +95,15 @@ class Molecules(Atoms):
         self._frequencies = _frequencies
     
     @property
+    def hinderedrotor(self):
+        """return vibrational frequencies"""
+        return self._hinderedrotor
+    
+    @ hinderedrotor.setter
+    def hinderedrotor(self, _hinderedrotor):
+        self._hinderedrotor = _hinderedrotor
+    
+    @property
     def method(self):
         """return method, or functional"""
         if self._method == None:
@@ -151,6 +160,7 @@ class Molecules(Atoms):
 
         anharm = parameters["anharm"]
         freq = parameters["freq"]
+        hindrot = parameters["hindrot"]
         method = parameters["method"]
         basis = parameters["basis"]
 
@@ -200,3 +210,12 @@ class Molecules(Atoms):
         logpath = os.path.abspath(filepath)
         self.logpath = logpath
         return
+
+class Hinderedrotor:
+    def __init__(self, reduced_mom, rotating_group, corrected_vib) -> None:
+        self._reduced_mom = reduced_mom
+        self._rotating_group = rotating_group
+        self._corrected_vib = corrected_vib
+    
+    def __call__(self) -> list:
+        return self.reduced_mom
