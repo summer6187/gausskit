@@ -30,8 +30,16 @@ def append_species(database, filepath, method=None):
 
     if simple_name not in database:
         database[simple_name] = {}
+
+    if method not in database[simple_name]:
         database[simple_name][method] = new_mol
     else:
+        method_n = method.split("-")[-1]
+        if method_n.isdigit():
+            _n = int(method_n) + 1
+        else:
+            _n = 1
+        method = f"{method}-{str(_n)}"
         database[simple_name][method] = new_mol
 
     return database
