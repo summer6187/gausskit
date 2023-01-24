@@ -172,6 +172,7 @@ if __name__ == "__main__":
         Eele_method = PES_method["eele"]
         ZPE_method = PES_method["zpe"]
         anharm_method = config.getboolean("Method", "anharm")
+        hindrot_method = config.getboolean("Method", "hinderedrotor")
         # load database
         filename = PES_method["database"]
         with open(filename, "rb") as f:
@@ -195,6 +196,7 @@ if __name__ == "__main__":
         
         thermo_methods = {
             "thermo_tunneling": thermo_tunneling,
+        "hindrot_method": hindrot_method,,
             "thermo_internal_rotor": thermo_internal_rotor,
         }
 

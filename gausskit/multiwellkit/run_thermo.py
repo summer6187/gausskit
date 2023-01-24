@@ -99,6 +99,7 @@ def run_thermo(dataset, mol_list, thermo_path, **calc_para):
 def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True):
 
     thermo_tunneling = thermo_methods["thermo_tunneling"]
+    hindrot_method = thermo_method_dict["hindrot_method"]
     thermo_internal_rotor = thermo_methods["thermo_internal_rotor"]
 
     # gather PES_info
