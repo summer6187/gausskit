@@ -96,9 +96,10 @@ def run_thermo(dataset, mol_list, thermo_path, **calc_para):
     subprocess.call(command, shell=True)
 
 
-def run_PES_thermo(PES_data, thermo_method_dict, thermo_path=None, verbose=True):
+def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True):
 
-    thermo_tun = thermo_method_dict["thermo_tunneling"]
+    thermo_tunneling = thermo_methods["thermo_tunneling"]
+    thermo_internal_rotor = thermo_methods["thermo_internal_rotor"]
 
     # gather PES_info
     item_list =  []
@@ -191,7 +192,7 @@ def run_PES_thermo(PES_data, thermo_method_dict, thermo_path=None, verbose=True)
             mol_lines = f.readlines()
             if mol.ts:
                 # if no tunneling, set img_freq and backwards_barrier to 0
-                if not thermo_tun:
+                if not thermo_tunneling:
                     img_freq = 0
                     backwards_barrier = 0
                 reaction_lines.append(f"ctst    {dummy_name}    {forwards_barrier}   {-img_freq}   {backwards_barrier}")

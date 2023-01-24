@@ -75,7 +75,7 @@ def get_item_ts(name, PES_method_dict):
 
     return _ts
 
-def parse_this_PES(database, PES_dict, PES_num_list, PES_method_dict, verbose=False):
+def parse_this_PES(database, PES_dict, PES_num_list, PES_methods, verbose=False):
     
     # init PES_data
     PES_data = {}
@@ -97,10 +97,10 @@ def parse_this_PES(database, PES_dict, PES_num_list, PES_method_dict, verbose=Fa
             else:
                 PES_item_dict[item] = {}
                 PES_item_dict[item]["plus_minus"] = plus_minus
-                E_0K, ZPE_Mols = get_item_energy(database[item], PES_method_dict)
+                E_0K, ZPE_Mols = get_item_energy(database[item], PES_methods)
                 PES_item_dict[item]["Mols"] = ZPE_Mols
                 PES_item_dict[item]["item_energy"] = E_0K * Hartree/(kcal/mol)
-                item_ts = get_item_ts(database[item], PES_method_dict)
+                item_ts = get_item_ts(database[item], PES_methods)
                 PES_item_dict[item]["ts"] = item_ts
                 if item_ts == True:
                     final_ts = True
@@ -172,25 +172,31 @@ if __name__ == "__main__":
         Eele_method = PES_method["eele"]
         ZPE_method = PES_method["zpe"]
         anharm_method = config.getboolean("Method", "anharm")
-        thermo_list = list(PES_method["thermo"].split())
-        thermo_dir = PES_method["thermo_dir"]
-        thermo_tunneling = config.getboolean("Method", "thermo_tunneling")
-        
         # load database
         filename = PES_method["database"]
         with open(filename, "rb") as f:
             database = pickle.load(f)
 
-
-    PES_method_dict = {
+    PES_methods = {
         "Eele_method": Eele_method,
         "ZPE_method": ZPE_method,
         "anharm_method": anharm_method,
     }
 
-    thermo_method_dict = {
-        "thermo_tunneling": thermo_tunneling
-    }
+    # set Thermo Method
+    calc_thermo = False
+    if "Thermo" in config.sections():
+        calc_thermo = True
+        Thermo_method = config_section_map(config, "Thermo")
+        thermo_list = list(Thermo_method["thermo"].split())
+        thermo_dir = Thermo_method["thermo_dir"]
+        thermo_tunneling = config.getboolean("Thermo", "tunneling")
+        thermo_internal_rotor = config.getboolean("Thermo", "internal_rotor")
+        
+        thermo_methods = {
+            "thermo_tunneling": thermo_tunneling,
+            "thermo_internal_rotor": thermo_internal_rotor,
+        }
 
     PES_datasets = {}
     # parse the rest sections
@@ -205,14 +211,15 @@ if __name__ == "__main__":
             PES_num_list = [int(num) for num in PES_num_list]
             PES_num_list.sort()
 
-            PES_data = parse_this_PES(database, PES_dict, PES_num_list, PES_method_dict, verbose=True)
+            PES_data = parse_this_PES(database, PES_dict, PES_num_list, PES_methods, verbose=True)
             PES_datasets[section] = PES_data
 
     # thermo calc
-    print("thermo calculation")
-    for _thermo_PES in thermo_list:
-        PES_data = PES_datasets[_thermo_PES]
-        thermo_path = os.path.join(thermo_dir, "thermo_" + _thermo_PES)
-        print("thermo calculation of", _thermo_PES)
-        run_PES_thermo(PES_data, thermo_method_dict, thermo_path=thermo_path, verbose=True)
+    if calc_thermo:
+        print("thermo calculation")
+        for _thermo_PES in thermo_list:
+            PES_data = PES_datasets[_thermo_PES]
+            thermo_path = os.path.join(thermo_dir, "thermo_" + _thermo_PES)
+            print("thermo calculation of", _thermo_PES)
+            run_PES_thermo(PES_data, thermo_methods, thermo_path=thermo_path, verbose=True)
 
