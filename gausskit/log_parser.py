@@ -375,6 +375,7 @@ def read_log_parameters(
     method: string = None,
     freq: bool = None,
     anharm: bool = None,
+    hindrot:bool = None,
     verbose: bool = False,
     ):
 
@@ -392,6 +393,12 @@ def read_log_parameters(
             parameters["anharm"] = True
         else:
             parameters["anharm"] = False
+        
+        if "hindrot" in parameter_line.lower() or \
+            "hinderedrotor" in parameter_line.lower():
+            parameters["hindrot"] = True
+        else:
+            parameters["hindrot"] = False
         
         if "freq" in parameter_line.lower():
             parameters["freq"] = True
@@ -421,6 +428,8 @@ def read_log_parameters(
     for parameters in parameters_list:
         if parameters["anharm"]:
             _anharm = True
+        if parameters["hindrot"]:
+            _hindrot = True
         if parameters["freq"]:
             _freq = True
         if parameters["method"] == "G4":
@@ -458,6 +467,12 @@ def read_log_parameters(
         overall_parameters["freq"] = _freq
     else:
         overall_parameters["freq"] = freq
+    
+    if hindrot == None:
+        overall_parameters["hindrot"] = _hindrot
+    else:
+        overall_parameters["hindrot"] = hindrot
+        
 
     return overall_parameters
 
