@@ -2,6 +2,7 @@ import subprocess
 import pickle
 import os
 import shutil
+import numpy as np
 
 
 def run_thermo(dataset, mol_list, thermo_path, **calc_para):
@@ -122,6 +123,14 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True):
                         print(f"Warning! Positive img_freq found {img_freq}")
             break
     
+    # prepare hindered rot calculations
+    if thermo_hinderedrotor:
+        hindrot_item_Mols_dict = {}
+        for n, PES_num in enumerate(PES_data):
+            for item in PES_data[PES_num]["PES_items"]:
+                if "Mols_hindrot" in PES_data[PES_num]["PES_items"][item]:
+                    hindrot_item_Mols_dict[item] = PES_data[PES_num]["PES_items"][item]["Mols_hindrot"]
+
     if thermo_path == None:
         thermo_path = "testcases/thermo_test"
     if verbose:
@@ -168,7 +177,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True):
 
     # 3. run gauss2multi
     command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; echo N | gauss2multi"
-    subprocess.call(command, shell=True)
+    subprocess.run(command, shell=True, capture_output=True)
 
 
     # 4. prepare thermo input file reaction.dat
@@ -199,11 +208,25 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True):
             else:
                 reaction_lines.append(f"reac    {dummy_name}    0.0")
             for line in mol_lines[5:]:
+                # if thermo_hinderedrotor and mol has hindered rotor
+                if thermo_hinderedrotor and well_name in hindrot_item_Mols_dict:
+                    # vibration in xxx.therm file is One-based numbering
+                    mol_hindrot = hindrot_item_Mols_dict[well_name]
+                    corrected_vibs = mol_hindrot.hinderedrotor._corrected_vibs
+                    corrected_vibs = [n+1 for n in corrected_vibs]
+                    # match lines like " 1   vib        56.7966  0.0    1"
+                    if len(line.split()) > 1:
+                        if line.split()[0].isdigit() and int(line.split()[0]) in corrected_vibs:
+                            #  and line.split()[1] == "vib":
+                            vib_index = int(line.split()[0])
+                            itemindex = corrected_vibs.index(vib_index)
+                            vib_type = "qrot"
+                            line = f"{vib_index:>3}{vib_type:>6}{mol_hindrot.hinderedrotor._reduced_moms[itemindex]:>15}  1.0    1"
                 if line[-1:] == "\n":
                     reaction_lines.append(line[:-1])
                 else:
                     reaction_lines.append(line)
-        
+
         reaction_lines.append(f"  {os.linesep}")
 
     for line in reaction_lines:

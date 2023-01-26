@@ -1,6 +1,7 @@
 from ase import Atoms
 from .log_parser import read_log_energy, read_log_parameters
 from ase.io.gaussian import read_gaussian_out
+from ase.symbols import symbols2numbers
 from .get_anharm_input import read_harm_freq, read_anharm_matrix, read_harm_freq_another
 from .hindrot import Hinderedrotor, read_hindrot
 import numpy as np
@@ -217,3 +218,41 @@ class Molecules(Atoms):
         logpath = os.path.abspath(filepath)
         self.logpath = logpath
         return
+
+    def to_dict(self):
+        mol_dict = {}
+        # store Atoms object info
+        mol_dict["symbols"] = self.get_chemical_symbols()
+        mol_dict["positions"] = self.get_positions()
+        # store other attributes
+        mol_dict["electronic_energy"] = self._electronic_energy
+        mol_dict["zpe"] = self._zpe
+        mol_dict["frequencies"] = self._frequencies
+        mol_dict["anharm_zpe"] = self._anharm_zpe
+        mol_dict["anharm_X_matrix"] = self._anharm_X_matrix
+        mol_dict["method"] = self._method
+        mol_dict["basis"] = self._basis
+        mol_dict["ts"] = self._ts
+        mol_dict["hinderedrotor"] = self._hinderedrotor.to_dict()
+        mol_dict["logpath"] = self.logpath
+
+        return mol_dict
+    
+    @classmethod
+    def from_dict(cls, mol_dict):
+        symbols = mol_dict["symbols"]
+        numbers = symbols2numbers(symbols)
+        positions = mol_dict["positions"]
+        new_mol = cls(numbers=numbers, positions=positions)
+        new_mol._electronic_energy = mol_dict["electronic_energy"] 
+        new_mol._zpe = mol_dict["zpe"] 
+        new_mol._frequencies = mol_dict["frequencies"] 
+        new_mol._anharm_zpe = mol_dict["anharm_zpe"] 
+        new_mol._anharm_X_matrix = mol_dict["anharm_X_matrix"] 
+        new_mol._method = mol_dict["method"] 
+        new_mol._basis = mol_dict["basis"] 
+        new_mol._ts = mol_dict["ts"] 
+        new_mol._hinderedrotor = Hinderedrotor.from_dict(mol_dict["hinderedrotor"])
+        new_mol.logpath = mol_dict["logpath"] 
+        
+        return new_mol

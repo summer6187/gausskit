@@ -1,6 +1,7 @@
-import os, pickle, re, sys
+import os, pickle, re, sys, json
 from gausskit.molecules import Molecules
-from gausskit.PES_parser import match_method
+from PES_parser import match_method
+import numpy as np
 
 # for filename in os.walk("."): # (dirpath, dirnames, filenames)
 #     print(filename)
@@ -28,6 +29,10 @@ def append_species(database, filepath, method=None):
     simple_name = simplify_raw_name(raw_name)
     new_mol = parse_species(filepath)
     method = new_mol.method
+    if list(new_mol.hinderedrotor()) == []:
+        pass
+    else:
+        method += "_hindrot"
 
     if simple_name not in database:
         database[simple_name] = {}
@@ -35,17 +40,21 @@ def append_species(database, filepath, method=None):
     if method not in database[simple_name]:
         database[simple_name][method] = new_mol
     else:
-        matched_method = match_method(database[simple_name], method)
-        method_max = max(matched_method)
-        method_n = method_max.split("_")[-1]
-        if method_n.isdigit():
-            _n = int(method_n) + 1
-        else:
-            _n = 1
-        method = f"{method}_{str(_n)}"
         database[simple_name][method] = new_mol
+        
 
     return database
+
+class NumpyEncoder(json.JSONEncoder):
+    """ Special json encoder for numpy types """
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
 
 
 if __name__ == "__main__":
@@ -70,5 +79,16 @@ if __name__ == "__main__":
         print(f"Parsing filepath {filepath}")
         database = append_species(database, filepath)
 
-    with open("database.pickle", "wb") as f:
-        pickle.dump(database,f)
+    # write database in pickle binary file
+    # with open("database.pickle", "wb") as f:
+    #     pickle.dump(database,f)
+
+    database_dict = {}
+    for item in database:
+        database_dict[item] = {}
+        for method in database[item]:
+            database_dict[item][method] = database[item][method].to_dict()
+    dumped = json.dumps(database_dict,indent=4)
+    with open("database.json", "w") as f:
+        f.write(dumped)
+

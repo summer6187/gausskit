@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 from ase.units import Hartree, kcal, mol
 from gausskit.multiwellkit.run_thermo import run_PES_thermo
+from gausskit.molecules import Molecules
 import collections
 import json
 
@@ -41,13 +42,22 @@ def get_item_energy(item, PES_method_dict):
 
     # match method in item_method list
     item_method_list = item.keys()
-    Eele_method = match_method(item_method_list, Eele_method)
+    Eele_methods = match_method(item_method_list, Eele_method)
+    Eele_method = Eele_methods[0]
 
     # get energies
     Eele = item[Eele_method].electronic_energy
 
     # get ZPE
-    ZPE_method = match_method(item_method_list, ZPE_method)
+    ZPE_methods = match_method(item_method_list, ZPE_method)
+
+    # don't use hindrot calc for general ZPE Mols
+    for _method in ZPE_methods:
+        if _method.endswith("hindrot"):
+            pass
+        else:
+            ZPE_method = _method
+    
     ZPE_Mols = item[ZPE_method]
     # single atom have no ZPE
     if len(item[Eele_method].get_chemical_symbols()) == 1:
@@ -58,7 +68,6 @@ def get_item_energy(item, PES_method_dict):
             ZPE = item[ZPE_method].anharm_zpe
         else:
             ZPE = item[ZPE_method].zpe
-    
     E_0K = Eele + ZPE
 
     return E_0K, ZPE_Mols
@@ -68,8 +77,8 @@ def get_item_ts(item, PES_method_dict):
 
     # match method in name_method list
     item_method_list = list(item.keys())
-    ZPE_method = match_method(item_method_list, ZPE_method)
-
+    ZPE_methods = match_method(item_method_list, ZPE_method)
+    ZPE_method = ZPE_methods[0]
 
     # single atom have no ZPE
     if len(item[item_method_list[0]].get_chemical_symbols()) == 1:
@@ -103,6 +112,13 @@ def parse_this_PES(database, PES_dict, PES_num_list, PES_methods, verbose=False)
                 PES_item_dict[item]["plus_minus"] = plus_minus
                 E_0K, ZPE_Mols = get_item_energy(database[item], PES_methods)
                 PES_item_dict[item]["Mols"] = ZPE_Mols
+
+                # add hindered rotor mols if possible
+                if any([item_method.endswith("hindrot") for item_method in database[item].keys()]):
+                    matched_methods = match_method(database[item].keys(), PES_methods["ZPE_method"]+"_hindrot")
+                    hindrot_method = matched_methods[0]
+                    PES_item_dict[item]["Mols_hindrot"] = database[item][hindrot_method]
+                
                 PES_item_dict[item]["item_energy"] = E_0K * Hartree/(kcal/mol)
                 item_ts = get_item_ts(database[item], PES_methods)
                 PES_item_dict[item]["ts"] = item_ts
@@ -178,8 +194,17 @@ if __name__ == "__main__":
         anharm_method = config.getboolean("Method", "anharm")
         # load database
         filename = PES_method["database"]
-        with open(filename, "rb") as f:
-            database = pickle.load(f)
+        if filename.split(".")[-1] == "pickle":
+            with open(filename, "rb") as f:
+                database = pickle.load(f)
+        elif filename.split(".")[-1] == "json":
+            with open(filename) as f:
+                database_dict = json.load(f)
+            database = {}
+            for item in database_dict:
+                database[item] = {}
+                for method in database_dict[item]:
+                    database[item][method] = Molecules.from_dict(database_dict[item][method])
 
     PES_methods = {
         "Eele_method": Eele_method,

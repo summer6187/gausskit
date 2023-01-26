@@ -42,6 +42,24 @@ class Hinderedrotor:
                         corrected_vib)
         self._rotors.append(this_rotor)
 
+    def to_dict(self):
+        hindrot_dict = {}
+        hindrot_dict["reduced_moms"] = self._reduced_moms
+        hindrot_dict["rotating_bonds"] = self._rotating_bonds
+        hindrot_dict["rotating_groups"] = self._rotating_groups
+        hindrot_dict["corrected_vibs"] = self._corrected_vibs
+        return hindrot_dict
+
+    @classmethod
+    def from_dict(cls, hindrot_dict):
+        reduced_moms = hindrot_dict["reduced_moms"] 
+        rotating_bonds = hindrot_dict["rotating_bonds"] 
+        rotating_groups = hindrot_dict["rotating_groups"] 
+        corrected_vibs = hindrot_dict["corrected_vibs"] 
+        return cls(reduced_moms,
+                    rotating_bonds,
+                    rotating_groups,
+                    corrected_vibs)
 
 class Rotor:
     def __init__(self, 
@@ -53,6 +71,10 @@ class Rotor:
         self.rotating_bond = rotating_bond
         self.rotating_group = rotating_group
         self.corrected_vib = corrected_vib
+
+
+
+
 
 
 def read_hindrot(filename):
