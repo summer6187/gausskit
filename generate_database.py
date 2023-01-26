@@ -1,5 +1,6 @@
 import os, pickle, re, sys
 from gausskit.molecules import Molecules
+from gausskit.PES_parser import match_method
 
 # for filename in os.walk("."): # (dirpath, dirnames, filenames)
 #     print(filename)
@@ -34,12 +35,14 @@ def append_species(database, filepath, method=None):
     if method not in database[simple_name]:
         database[simple_name][method] = new_mol
     else:
-        method_n = method.split("-")[-1]
+        matched_method = match_method(database[simple_name], method)
+        method_max = max(matched_method)
+        method_n = method_max.split("_")[-1]
         if method_n.isdigit():
             _n = int(method_n) + 1
         else:
             _n = 1
-        method = f"{method}-{str(_n)}"
+        method = f"{method}_{str(_n)}"
         database[simple_name][method] = new_mol
 
     return database

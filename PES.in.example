@@ -2,8 +2,13 @@
 Eele: G4
 ZPE: MP2
 Anharm: True
-Hinderedrotor: True
 database: testcases/database.pickle
+
+[Thermo]
+thermo: PES_1 PES_2 PES_3 PES_4
+thermo_dir: /home/yuflin/work/testcases
+tunneling: False
+hinderedrotor: True
 
 [PES_1]
 1: HCFC133a + OH

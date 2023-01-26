@@ -21,57 +21,61 @@ def config_section_map(config, section):
             dict1[option] = None
     return dict1
 
-def match_method(name_method_list, method):
-    matched_method = ""
-    for name_method in name_method_list:
-        if name_method == None:
-            name_method = ""
-        if method.lower() in name_method.lower():
-            matched_method = name_method
+def match_method(item_method_list, method):
+    matched_method = []
+    for item_method in item_method_list:
+        if item_method == None:
+            item_method = ""
+        if method.lower() in item_method.lower():
+            matched_method.append(item_method)
+    # raise error
+    if matched_method == []:
+        print(f"No method matched for {method} in {item_method_list}!")
+        print("Please check your database!")
     return matched_method
 
-def get_item_energy(name, PES_method_dict):
+def get_item_energy(item, PES_method_dict):
     Eele_method = PES_method_dict["Eele_method"]
     ZPE_method = PES_method_dict["ZPE_method"]
     anharm_method = PES_method_dict["anharm_method"]
 
-    # match method in name_method list
-    name_method_list = name.keys()
-    Eele_method = match_method(name_method_list, Eele_method)
+    # match method in item_method list
+    item_method_list = item.keys()
+    Eele_method = match_method(item_method_list, Eele_method)
 
     # get energies
-    Eele = name[Eele_method].electronic_energy
+    Eele = item[Eele_method].electronic_energy
 
     # get ZPE
-    ZPE_method = match_method(name_method_list, ZPE_method)
-    ZPE_Mols = name[ZPE_method]
+    ZPE_method = match_method(item_method_list, ZPE_method)
+    ZPE_Mols = item[ZPE_method]
     # single atom have no ZPE
-    if len(name[Eele_method].get_chemical_symbols()) == 1:
+    if len(item[Eele_method].get_chemical_symbols()) == 1:
         ZPE = 0
     else:
         # if not single atom parse ZPE
         if anharm_method:
-            ZPE = name[ZPE_method].anharm_zpe
+            ZPE = item[ZPE_method].anharm_zpe
         else:
-            ZPE = name[ZPE_method].zpe
+            ZPE = item[ZPE_method].zpe
     
     E_0K = Eele + ZPE
 
     return E_0K, ZPE_Mols
 
-def get_item_ts(name, PES_method_dict):
+def get_item_ts(item, PES_method_dict):
     ZPE_method = PES_method_dict["ZPE_method"]
 
     # match method in name_method list
-    name_method_list = list(name.keys())
-    ZPE_method = match_method(name_method_list, ZPE_method)
+    item_method_list = list(item.keys())
+    ZPE_method = match_method(item_method_list, ZPE_method)
 
 
     # single atom have no ZPE
-    if len(name[name_method_list[0]].get_chemical_symbols()) == 1:
+    if len(item[item_method_list[0]].get_chemical_symbols()) == 1:
         _ts = False
     else:
-        _ts = name[ZPE_method].ts
+        _ts = item[ZPE_method].ts
 
     return _ts
 
@@ -172,7 +176,6 @@ if __name__ == "__main__":
         Eele_method = PES_method["eele"]
         ZPE_method = PES_method["zpe"]
         anharm_method = config.getboolean("Method", "anharm")
-        hindrot_method = config.getboolean("Method", "hinderedrotor")
         # load database
         filename = PES_method["database"]
         with open(filename, "rb") as f:
@@ -192,12 +195,11 @@ if __name__ == "__main__":
         thermo_list = list(Thermo_method["thermo"].split())
         thermo_dir = Thermo_method["thermo_dir"]
         thermo_tunneling = config.getboolean("Thermo", "tunneling")
-        thermo_internal_rotor = config.getboolean("Thermo", "internal_rotor")
+        thermo_hinderedrotor = config.getboolean("Thermo", "hinderedrotor")
         
         thermo_methods = {
             "thermo_tunneling": thermo_tunneling,
-        "hindrot_method": hindrot_method,,
-            "thermo_internal_rotor": thermo_internal_rotor,
+            "thermo_hinderedrotor": thermo_hinderedrotor,
         }
 
     PES_datasets = {}

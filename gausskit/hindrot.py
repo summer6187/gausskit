@@ -74,10 +74,14 @@ def read_hindrot(filename):
             if "Identification of rotating group for bond" in line:
                 found_hindrot = True
                 rotating_bond = [int(line.split()[-3]), int(line.split()[-1])]
+                # change to Zero-based numbering
+                rotating_bond = tuple([n-1 for n in rotating_bond])
                 rotating_bonds.append(rotating_bond)
             if "Composition of rotating group" in line:
                 rotating_group = lines[n_line+1].split()
                 rotating_group = np.asarray(rotating_group, dtype=int)
+                # change to Zero-based numbering
+                rotating_group = tuple([n-1 for n in rotating_group])
                 rotating_groups.append(rotating_group)
             if "Reduced Moments ---" in line:
                 reduced_moms = line.split()[-3:]
@@ -85,6 +89,8 @@ def read_hindrot(filename):
             if "Identified internal rotation modes" in line:
                 corrected_vibs = lines[n_line+1].split()
                 corrected_vibs = np.asarray(corrected_vibs, dtype=int)
+                # change to Zero-based numbering
+                corrected_vibs = corrected_vibs - 1
                 
         # set dtypes
         if found_hindrot:
