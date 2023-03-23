@@ -7,6 +7,17 @@ from .hindrot import Hinderedrotor, read_hindrot
 import numpy as np
 import os
 
+
+def method_parser(method):
+    """
+    symplify the method name. TO IMPROVE!
+    """
+    new_method = method
+    if "mp2" in method.lower():
+        new_method = "MP2"
+    return new_method
+    
+
 class Molecules(Atoms):
     """
     A Molecules is a modified Object inherited from ase.Atoms
@@ -105,7 +116,7 @@ class Molecules(Atoms):
     @ hinderedrotor.setter
     def hinderedrotor(self, _hinderedrotor):
         self._hinderedrotor = _hinderedrotor
-    
+   
     @property
     def method(self):
         """return method, or functional"""
@@ -203,7 +214,7 @@ class Molecules(Atoms):
                 new_mol.anharm_matrix = read_anharm_matrix(filename)
         
         # set methods
-        new_mol.method = method
+        new_mol.method = method_parser(method)
 
         # set hindrotor
         if hindrot:

@@ -80,15 +80,15 @@ if __name__ == "__main__":
         database = append_species(database, filepath)
 
     # write database in pickle binary file
-    # with open("database.pickle", "wb") as f:
-    #     pickle.dump(database,f)
+    with open("database.pickle", "wb") as f:
+        pickle.dump(database,f)
 
-    database_dict = {}
-    for item in database:
-        database_dict[item] = {}
-        for method in database[item]:
-            database_dict[item][method] = database[item][method].to_dict()
-    dumped = json.dumps(database_dict,indent=4)
-    with open("database.json", "w") as f:
-        f.write(dumped)
+    # database_dict = {}
+    # for item in database:
+    #     database_dict[item] = {}
+    #     for method in database[item]:
+    #         database_dict[item][method] = database[item][method].to_dict()
+    # dumped = json.dumps(database_dict,indent=4)
+    # with open("database.json", "w") as f:
+    #     f.write(dumped)
 
