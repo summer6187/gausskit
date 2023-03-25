@@ -216,7 +216,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True):
                     corrected_vibs = [n+1 for n in corrected_vibs]
                     # match lines like " 1   vib        56.7966  0.0    1"
                     if len(line.split()) > 1:
-                        if line.split()[0].isdigit() and int(line.split()[0]) in corrected_vibs:
+                        if line.split()[0].isdigit() and line.split()[1] == "vib" and int(line.split()[0]) in corrected_vibs:
                             #  and line.split()[1] == "vib":
                             vib_index = int(line.split()[0])
                             itemindex = corrected_vibs.index(vib_index)
