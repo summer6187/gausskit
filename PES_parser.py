@@ -14,13 +14,21 @@ def config_section_map(config, section):
     options = config.options(section)
     for option in options:
         try:
-            dict1[option] = config.get(section, option)
-            if dict1[option] == -1:
+            dict1[option.lower()] = config.get(section, option)
+            if dict1[option.lower()] == -1:
                 print("skip: %s" % option)
         except:
             print("exception on %s!" % option)
-            dict1[option] = None
+            dict1[option.lower()] = None
     return dict1
+
+def config_getboolean(config, section, option):
+    section_map = config_section_map(config, section)
+    if option.lower() in section_map:
+        _bool = config.getboolean(section, option)
+    else:
+        _bool = False
+    return _bool
 
 def match_method(item_method_list, method):
     matched_method = []
@@ -176,6 +184,22 @@ def parse_this_PES(database, PES_dict, PES_num_list, PES_methods, verbose=False)
     return PES_data
 
 
+def thermo_method_warning(thermo_methods, PES_methods):
+    if thermo_methods["thermo_anharm"]:
+        if thermo_methods["thermo_tunneling"]:
+            print("WARNING, Thermo anharm conflict with tunneling")
+            print("Exiting program!")
+            exit()
+        if thermo_methods["thermo_hinderedrotor"]:
+            print("WARNING, Thermo anharm conflict with thermo_hinderedrotor")
+            print("Exiting program!")
+            exit()
+        if not PES_methods["anharm_method"]:
+            print("PES(ZPE) does not include anharm")
+            print("Exiting program!")
+            exit()
+    return
+
 if __name__ == "__main__":
     config = configparser.ConfigParser()
 
@@ -191,7 +215,7 @@ if __name__ == "__main__":
         PES_method = config_section_map(config, "Method")
         Eele_method = PES_method["eele"]
         ZPE_method = PES_method["zpe"]
-        anharm_method = config.getboolean("Method", "anharm")
+        anharm_method = config_getboolean(config, "Method", "anharm")
         # load database
         filename = PES_method["database"]
         if filename.split(".")[-1] == "pickle":
@@ -219,13 +243,16 @@ if __name__ == "__main__":
         Thermo_method = config_section_map(config, "Thermo")
         thermo_list = list(Thermo_method["thermo"].split())
         thermo_dir = Thermo_method["thermo_dir"]
-        thermo_tunneling = config.getboolean("Thermo", "tunneling")
-        thermo_hinderedrotor = config.getboolean("Thermo", "hinderedrotor")
+        thermo_tunneling = config_getboolean(config, "Thermo", "tunneling")
+        thermo_hinderedrotor = config_getboolean(config, "Thermo", "hinderedrotor")
+        thermo_anharm = config_getboolean(config, "Thermo", "anharm")
         
         thermo_methods = {
             "thermo_tunneling": thermo_tunneling,
             "thermo_hinderedrotor": thermo_hinderedrotor,
+            "thermo_anharm": thermo_anharm,
         }
+        thermo_method_warning(thermo_methods, PES_methods)
 
     PES_datasets = {}
     # parse the rest sections
@@ -250,5 +277,5 @@ if __name__ == "__main__":
             PES_data = PES_datasets[_thermo_PES]
             thermo_path = os.path.join(thermo_dir, "thermo_" + _thermo_PES)
             print("thermo calculation of", _thermo_PES)
-            run_PES_thermo(PES_data, thermo_methods, thermo_path=thermo_path, verbose=True)
+            run_PES_thermo(PES_data, thermo_methods, thermo_path, verbose=True)
 
