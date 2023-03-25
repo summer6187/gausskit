@@ -211,93 +211,118 @@ def format_freq_matrix(harm_freq, anharm_matrix):
     return formated_lines
 
 
-def main(filename):
-    # filename = "TS2.log"
-    filename_name = filename.split(".")[0]
-
-    input_list = []
-    input_list.append(filename_name)
-    method, basissets = read_method(filename)
-    input_list.append(f"At ??/?? level of theory")
-    input_list.append(f"Anharmonicity from {method}/{basissets} level")
-    input_list.append(" ")
-
-    harm_freq = read_harm_freq(filename)
-    harm_freq = np.array(harm_freq)
-    anharm_matrix = read_anharm_matrix(filename)
-
-    # check if calculation type is TS
-    ts_bool = False
+def prepare_parsctst(filename_name, harm_freq, anharm_matrix, Egrain_line):
+    
     img_freq = 0
     img_index = None
     ind_array = np.argsort(harm_freq)
     if harm_freq[ind_array][0] < 0:
-        ts_bool = True
         if np.any(harm_freq[ind_array][1:] < 0):
             print("More than one imagine freq found!!!")
             print("Please check the calculation!!!")
         else:
             img_index = ind_array[0]
             img_freq = harm_freq[img_index]
+    img_nn = anharm_matrix[img_index][img_index]
+
+    # make full anharm matrix (symmetry matrix)
+    full_anharm_matrix = (
+        anharm_matrix + anharm_matrix.T - np.diag(np.diag(anharm_matrix))
+    )
+    img_anharm_array = full_anharm_matrix[img_index]
+    img_anharm_array = np.delete(img_anharm_array, img_index)
+
+    # remake the harm_freq and anharm_matrix for sctst.dat
+    harm_freq = np.delete(harm_freq, img_index)
+    full_anharm_matrix = np.delete(full_anharm_matrix, img_index, axis=0)
+    full_anharm_matrix = np.delete(full_anharm_matrix, img_index, axis=1)
+    anharm_matrix = np.tril(full_anharm_matrix)
+
+    # prepare inputfile
+    input_list = []
+    input_list.append(filename_name)
+    input_list.append(f"At ??/?? level of theory")
+    input_list.append(f"Anharmonicity from ??/?? level")
+    input_list.append(" ")
+
+    input_list.append(f'{len(harm_freq)}, {0}, {0}, "We" ')
+    input_list.append(" ")
+    formated_lines = format_freq_matrix(harm_freq, anharm_matrix)
+    input_list = input_list + formated_lines
+    input_list.append(" ")
+    input_list.append("0    'AMUA'")
+    input_list.append(f"{Egrain_line}")
+    input_list.append(f"'nochekstart'  {filename_name}.chk")
+    input_list.append("VPT4A")
+    input_list.append('<forward_barrier>  <backword_barrier>  "kcal"')
+    input_list.append(f"{img_freq}  {img_nn:.5E}")
+    input_list = input_list + [f"{item:.5E}" for item in img_anharm_array]
+    input_list.append(" ")
+    pardata = [
+        "1       !nwalkers",
+        "70.d0   !perc_wind_overlap",
+        "0.60d0  !flatness",
+        "1       !Writing enable (1) or disable (2)",
+        "0       !Seed modifier",
+        "cost    !Windows balance  (cost / low / high)",
+    ]
+    input_list += pardata
+    input_list.append(" ")
+
+    return input_list
+
+def prepare_bdens(filename_name, harm_freq, anharm_matrix, Egrain_line):
+    input_list = []
+    input_list.append(filename_name)
+    input_list.append(f"At ??/?? level of theory")
+    input_list.append(f"Anharmonicity from ??/?? level")
+    input_list.append(" ")
+    
+    input_list.append(f'{len(harm_freq)}, {0}, {0}, "We" ')
+    input_list.append(" ")
+    formated_lines = format_freq_matrix(harm_freq, anharm_matrix)
+    input_list = input_list + formated_lines
+    input_list.append(" ")
+    input_list.append("0    'AMUA'")
+    input_list.append(" ")
+    input_list.append(f'{Egrain_line}   "good"  "auto"   450000. ')
+    input_list.append(f"'nochekstart'  {filename_name}.chk")
+    input_list.append(" ")
+    return input_list
+
+def main(filename):
+    # default Egrain_line
+    Egrain_line = "10	3000	4000	50000"
+    # filename = "TS2.log"
+    filename_name = filename.split(".")[0]
+
+    harm_freq = read_harm_freq(filename)
+    if len(harm_freq) == 0:
+        harm_freq = read_harm_freq_another(filename)
+    if len(harm_freq) == 0:
+        print(f"no frequancy data found in {filename}!!")
+
+    harm_freq = np.array(harm_freq)
+    anharm_matrix = read_anharm_matrix(filename)
+
+    # check if calculation type is TS
+    ts_bool = False
+    ind_array = np.argsort(harm_freq)
+    if harm_freq[ind_array][0] < 0:
+        ts_bool = True
 
     if ts_bool:  # prepare parsctst.dat
-        print(f"Found imagine frequency {img_freq} cm-1, generateing parsctst.dat")
+        print(f"Found imagine frequency {harm_freq[ind_array][0]} cm-1, generateing parsctst.dat")
         output = f"{filename_name}.parsctst.dat"
-        img_nn = anharm_matrix[img_index][img_index]
-        # make full anharm matrix (symmetry matrix)
-        full_anharm_matrix = (
-            anharm_matrix + anharm_matrix.T - np.diag(np.diag(anharm_matrix))
-        )
-        img_anharm_array = full_anharm_matrix[img_index]
-        img_anharm_array = np.delete(img_anharm_array, img_index)
-
-        # remake the harm_freq and anharm_matrix for sctst.dat
-        harm_freq = np.delete(harm_freq, img_index)
-        full_anharm_matrix = np.delete(full_anharm_matrix, img_index, axis=0)
-        full_anharm_matrix = np.delete(full_anharm_matrix, img_index, axis=1)
-        anharm_matrix = np.tril(full_anharm_matrix)
-
-        # prepare inputfile
-        input_list.append(f'{len(harm_freq)}, {0}, {0}, "We" ')
-        input_list.append(" ")
-        formated_lines = format_freq_matrix(harm_freq, anharm_matrix)
-        input_list = input_list + formated_lines
-        input_list.append(" ")
-        input_list.append("0    'AMUA'")
-        input_list.append("10	3000	4000	50000")
-        input_list.append(f"'nochekstart'  {filename_name}.chk")
-        input_list.append("VPT4A")
-        input_list.append('<forward_barrier>  <backword_barrier>  "kcal"')
-        input_list.append(f"{img_freq}  {img_nn:.5E}")
-        input_list = input_list + [f"{item:.5E}" for item in img_anharm_array]
-        input_list.append(" ")
-        pardata = [
-            "1       !nwalkers",
-            "70.d0   !perc_wind_overlap",
-            "0.60d0  !flatness",
-            "1       !Writing enable (1) or disable (2)",
-            "0       !Seed modifier",
-            "cost    !Windows balance  (cost / low / high)",
-        ]
-        input_list += pardata
-        input_list.append(" ")
+        input_list = prepare_parsctst(filename_name, harm_freq, anharm_matrix, Egrain_line)
 
         print(f"<forward_barrier>  <backword_barrier> need specify in {output}")
 
     else:  # prepare bdens.dat
         output = f"{filename_name}.bdens.dat"
         print(f"Found No imagine frequencies, generateing {output}")
+        input_list = prepare_bdens(filename_name, harm_freq, anharm_matrix, Egrain_line)
 
-        input_list.append(f'{len(harm_freq)}, {0}, {0}, "We" ')
-        input_list.append(" ")
-        formated_lines = format_freq_matrix(harm_freq, anharm_matrix)
-        input_list = input_list + formated_lines
-        input_list.append(" ")
-        input_list.append("0    'AMUA'")
-        input_list.append(" ")
-        input_list.append('10	3000	4000	50000   "good"  "auto"   450000. ')
-        input_list.append(f"'nochekstart'  {filename_name}.chk")
-        input_list.append(" ")
 
     with open(output, "w") as f:
         f.writelines([line + "\n" for line in input_list])
