@@ -4,6 +4,9 @@ import subprocess
 
 def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=True, Egrain_line="10	3000	4000	50000"):
     
+    multiwell_wells = multiwell_methods["multiwell_wells"]
+    multiwell_products = multiwell_methods["multiwell_products"]
+    multiwell_tss = multiwell_methods["multiwell_tss"]
     multiwell_anharm = multiwell_methods["multiwell_anharm"]
 
     # gather PES_info
@@ -75,17 +78,20 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
     command = f"cd {densdata_path}; module load gcc/10.3.0 openmpi/4.1.1; echo N | gauss2multi"
     subprocess.run(command, shell=True, capture_output=True)
     
-    # 4. prepare thermo input file reaction.dat
+    # 4. prepare multiwell input file multiwell.dat
     reaction_f = open(os.path.join(multiwell_path, "multiwell.dat"), "w")
 
     reaction_lines = ["Gausskit generated. Be careful.", 
-                    f"{Egrain_line}     1832960486", 
+                    f"{Egrain_line}     1832960486", # a random seed 
                     "'ATM '  'KCAL'  'AMUA'",
                     " 298   298      !   <-  translational and initial vibrational temperatures.",
                     "1", # number of pressure
                     "1", # pressure
-                    ""
-                    f"{len(item_list)}",
+                    f"{len(multiwell_wells)}  {len(multiwell_products)}",
                     ]
     
+    # formating well line
+    n_channel = 1
+    well_line = f"{n_channel}    'WELL{n_channel}'     0.00 {n_channel}" 
+
     return

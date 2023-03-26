@@ -67,7 +67,7 @@ def get_item_energy(item, PES_method_dict):
         else:
             ZPE_method = _method
     
-    ZPE_Mols = item[ZPE_method]
+    ZPE_Mol = item[ZPE_method]
     # single atom have no ZPE
     if len(item[Eele_method].get_chemical_symbols()) == 1:
         ZPE = 0
@@ -79,7 +79,7 @@ def get_item_energy(item, PES_method_dict):
             ZPE = item[ZPE_method].zpe
     E_0K = Eele + ZPE
 
-    return E_0K, ZPE_Mols
+    return E_0K, ZPE_Mol
 
 def get_item_ts(item, PES_method_dict):
     ZPE_method = PES_method_dict["ZPE_method"]
@@ -101,7 +101,9 @@ def parse_this_PES(database, PES_dict, PES_num_list, PES_methods, verbose=False)
     
     # init PES_data
     PES_data = {}
-    
+    # label for the dummy name of mols or TSs
+    n_mol = 1
+
     # parse every item in this PES
     for PES_num in PES_num_list:
         item_string = PES_dict[str(PES_num)]
@@ -117,20 +119,27 @@ def parse_this_PES(database, PES_dict, PES_num_list, PES_methods, verbose=False)
             elif item == "-":
                 plus_minus = "-"
             else:
-                PES_item_dict[item] = {}
-                PES_item_dict[item]["plus_minus"] = plus_minus
-                E_0K, ZPE_Mols = get_item_energy(database[item], PES_methods)
-                PES_item_dict[item]["Mols"] = ZPE_Mols
+                # when item is not + or -, then it's a Mol
+                E_0K, ZPE_Mol = get_item_energy(database[item], PES_methods)
+                if ZPE_Mol.ts:
+                    dummy_name = f"TS{n_mol}"
+                else:
+                    dummy_name = f"Mol{n_mol}"
+                n_mol += 1
+                PES_item_dict[dummy_name] = {}
+                PES_item_dict[dummy_name]["mol_name"] = item
+                PES_item_dict[dummy_name]["plus_minus"] = plus_minus
+                PES_item_dict[dummy_name]["Mol"] = ZPE_Mol
 
                 # add hindered rotor mols if possible
                 if any([item_method.endswith("hindrot") for item_method in database[item].keys()]):
                     matched_methods = match_method(database[item].keys(), PES_methods["ZPE_method"]+"_hindrot")
                     hindrot_method = matched_methods[0]
-                    PES_item_dict[item]["Mols_hindrot"] = database[item][hindrot_method]
+                    PES_item_dict[dummy_name]["Mol_hindrot"] = database[item][hindrot_method]
                 
-                PES_item_dict[item]["item_energy"] = E_0K * Hartree/(kcal/mol)
+                PES_item_dict[dummy_name]["item_energy"] = E_0K * Hartree/(kcal/mol)
                 item_ts = get_item_ts(database[item], PES_methods)
-                PES_item_dict[item]["ts"] = item_ts
+                PES_item_dict[dummy_name]["ts"] = item_ts
                 if item_ts == True:
                     final_ts = True
 
@@ -174,13 +183,15 @@ def parse_this_PES(database, PES_dict, PES_num_list, PES_methods, verbose=False)
             item_string_list = []
             for PES_item in PES_data[PES_num]["PES_items"]:
                 item_string_list.append(PES_data[PES_num]["PES_items"][PES_item]["plus_minus"])
-                item_string_list.append(PES_item)
+                dummy_name = PES_item
+                mol_name = PES_data[PES_num]["PES_items"][PES_item]["mol_name"]
+                item_string_list.append(f"{mol_name}({dummy_name})")
             item_string = " ".join(item_string_list)[2:] # omit first "+ " sign
             energy = PES_data[PES_num]["PES_energy"]
             reverse_energy = PES_data[PES_num]["reverse"]
             reverse_ref = PES_data[PES_num]["reverse_ref"]
 
-            print(f"  {PES_num:>2}. {item_string:35} {energy:>8.3f}  {reverse_energy:>8.3f}  (backwards)  ref:{reverse_ref}")
+            print(f"  {PES_num:>2}. {item_string:45} {energy:>8.3f}  {reverse_energy:>8.3f}  (ref:{reverse_ref})")
     
     return PES_data
 
@@ -261,17 +272,24 @@ if __name__ == "__main__":
     if "Multiwell" in config.sections():
         calc_thermo = True
         Multiwell_method = config_section_map(config, "Multiwell")
-        multiwell_list = list(Multiwell_method["multiwell"].split())
+        multiwell_pes = list(Multiwell_method["multiwell_pes"].split())
         multiwell_dir = Multiwell_method["multiwell_dir"]
+        multiwell_wells = list(Multiwell_method["multiwell_wells"].split())
+        multiwell_products = list(Multiwell_method["multiwell_products"].split())
+        multiwell_tss = list(Multiwell_method["multiwell_tss"].split())
         multiwell_anharm = config_getboolean(config, "Multiwell", "anharm")
 
         multiwell_methods = {
+            "multiwell_wells": multiwell_wells,
+            "multiwell_products": multiwell_products,
+            "multiwell_tss": multiwell_tss,
             "multiwell_anharm": multiwell_anharm,
         }
 
 
     PES_datasets = {}
     # parse the rest sections
+    print("      {:45} {:>8}  {:>8}".format("reaction", "Fwd barr.", "bkw barr.(kcal/mol)"))
     for section in config.sections():
         # parse one PES
         if section != "Method" and "PES" in section:
@@ -282,7 +300,6 @@ if __name__ == "__main__":
             PES_num_list = PES_dict.keys()
             PES_num_list = [int(num) for num in PES_num_list]
             PES_num_list.sort()
-
             PES_data = parse_this_PES(database, PES_dict, PES_num_list, PES_methods, verbose=True)
             PES_datasets[section] = PES_data
 
@@ -298,7 +315,7 @@ if __name__ == "__main__":
     # multiwell calc
     if calc_multiwell:
         print("multiwell calculation")
-        for _multiwell_PES in multiwell_list:
+        for _multiwell_PES in multiwell_pes:
             PES_data = PES_datasets[_multiwell_PES]
             multiwell_path = os.path.join(multiwell_dir, "multiwell_" + _multiwell_PES)
             print("multiwell calculation of", _multiwell_PES)

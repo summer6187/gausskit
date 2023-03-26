@@ -32,19 +32,21 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
 
     # gather PES_info
     item_list =  []
-    item_Mols_list = []
+    item_mol_name_list = []
+    item_Mol_list = []
     for n, PES_num in enumerate(PES_data):
         for item in PES_data[PES_num]["PES_items"]:
             item_list.append(item)
-            Mols = PES_data[PES_num]["PES_items"][item]["Mols"]
-            item_Mols_list.append(Mols)
+            item_mol_name_list.append(PES_data[PES_num]["PES_items"][item]["mol_name"])
+            Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
+            item_Mol_list.append(Mol)
         if PES_data[PES_num]["final_ts"] == True:
             forwards_barrier = PES_data[PES_num]["PES_energy"]
             reverse_PES_num = list(PES_data.keys())[n+1]
             backwards_barrier = PES_data[reverse_PES_num]["reverse"]
             for item in PES_data[PES_num]["PES_items"]:
                 if PES_data[PES_num]["PES_items"][item]["ts"] == True:
-                    sorted_freq = PES_data[PES_num]["PES_items"][item]["Mols"].frequencies.copy()
+                    sorted_freq = PES_data[PES_num]["PES_items"][item]["Mol"].frequencies.copy()
                     sorted_freq.sort()
                     img_freq = sorted_freq[0]
                     if img_freq > 0:
@@ -53,16 +55,16 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
     
     # prepare hindered rot calculations
     if thermo_hinderedrotor:
-        hindrot_item_Mols_dict = {}
+        hindrot_item_Mol_dict = {}
         for n, PES_num in enumerate(PES_data):
             for item in PES_data[PES_num]["PES_items"]:
-                if "Mols_hindrot" in PES_data[PES_num]["PES_items"][item]:
-                    hindrot_item_Mols_dict[item] = PES_data[PES_num]["PES_items"][item]["Mols_hindrot"]
+                if "Mol_hindrot" in PES_data[PES_num]["PES_items"][item]:
+                    hindrot_item_Mol_dict[item] = PES_data[PES_num]["PES_items"][item]["Mol_hindrot"]
 
     if thermo_path == None:
         thermo_path = "testcases/thermo_test"
     if verbose:
-        print(item_list)
+        print(item_mol_name_list)
 
     # 1. prepare log files
     if os.path.exists(thermo_path):
@@ -70,12 +72,8 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
     else:
         os.mkdir(thermo_path)
 
-    for n, (well_name, Mols) in enumerate(zip(item_list,item_Mols_list)):
-        mol = Mols
-        if mol.ts:
-            dummy_name = f"TS{n+1}"
-        else:
-            dummy_name = f"WELL{n+1}"
+    for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
+        mol = Mol
         dummy_logname = f"{dummy_name}.log"
         shutil.copy(mol.logpath, os.path.join(thermo_path,dummy_logname))
 
@@ -89,12 +87,12 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
                 "1", 
                 "1", 
                 f"{Egrain_line}"]
-    for n, (well_name, Mols) in enumerate(zip(item_list,item_Mols_list)):
-        mol = Mols
+    for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
+        mol = Mol
         if mol.ts:
-            mol_line = f"{n+1}   TS{n+1}.log     TS"
+            mol_line = f"{n+1}   {dummy_name}.log     TS"
         else:
-            mol_line = f"{n+1}   WELL{n+1}.log   WELL"
+            mol_line = f"{n+1}   {dummy_name}.log   WELL"
         g2m_lines.append(mol_line)
 
     with open(g2m_filepath, "w") as f:
@@ -110,13 +108,11 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
     # 3.5 run bdens and/or parsctst if anharm
     # prepare bdens.dat or parsctst.dat
     if thermo_anharm:
-        
-        for n, (well_name, Mols) in enumerate(zip(item_list,item_Mols_list)):
-            mol = Mols
+        for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
+            mol = Mol
             if mol.ts:
                 # parsctst
-                dummy_name = f"TS{n+1}"
-                output_datname = f"TS{n+1}.parsctst.dat"
+                output_datname = f"{dummy_name}.parsctst.dat"
                 harm_freq = mol.frequencies
                 anharm_matrix = mol.anharm_matrix
                 barrier = [forwards_barrier, backwards_barrier]
@@ -124,8 +120,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
 
             else:
                 # bdens
-                dummy_name = f"WELL{n+1}"
-                output_datname = f"WELL{n+1}.bdens.dat"
+                output_datname = f"{dummy_name}.bdens.dat"
                 harm_freq = mol.frequencies
                 anharm_matrix = mol.anharm_matrix
                 input_list = prepare_bdens(dummy_name,harm_freq,anharm_matrix,Egrain_line)
@@ -140,17 +135,18 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
             
             # run bdens or parsctst
             print("-----------------anharmonic-----------------")
+            mol_name = item_mol_name_list[n]
             if mol.ts:
                 # run parsctst
                 command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; parsctst"
-                print(f"parsctst running for {dummy_name}({well_name})")
+                print(f"parsctst running for {mol_name}({dummy_name})")
                 subprocess.call(command, shell=True)
                 fix_crp_file(os.path.join(thermo_path, f"{dummy_name}.crp"))
                 fix_crp_file(os.path.join(thermo_path, f"{dummy_name}.qcrp"))
             else:
                 # run bdens
                 command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; bdens"
-                print(f"bdens running for {dummy_name}({well_name})")
+                print(f"bdens running for {mol_name}({dummy_name})")
                 subprocess.call(command, shell=True)
             
                 
@@ -164,12 +160,8 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
                     ]
 
     # shit mountain!!
-    for n, (well_name, Mols) in enumerate(zip(item_list,item_Mols_list)):
-        mol = Mols
-        if mol.ts:
-            dummy_name = f"TS{n+1}"
-        else:
-            dummy_name = f"WELL{n+1}"
+    for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
+        mol = Mol
         dummy_thermname = f"{dummy_name}.therm"
 
         with open(os.path.join(thermo_path, dummy_thermname)) as f:
@@ -226,9 +218,9 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
                 for line in mol_lines[5:]:    
                     # if thermo_hinderedrotor and mol has hindered rotor
                     # if not, line will not be modified
-                    if thermo_hinderedrotor and well_name in hindrot_item_Mols_dict:
+                    if thermo_hinderedrotor and dummy_name in hindrot_item_Mol_dict:
                         # vibration in xxx.therm file is One-based numbering
-                        mol_hindrot = hindrot_item_Mols_dict[well_name]
+                        mol_hindrot = hindrot_item_Mol_dict[dummy_name]
                         corrected_vibs = mol_hindrot.hinderedrotor._corrected_vibs
                         corrected_vibs = [n+1 for n in corrected_vibs]
                         # match lines like " 1   vib        56.7966  0.0    1"
