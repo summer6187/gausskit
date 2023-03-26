@@ -230,11 +230,6 @@ def prepare_parsctst(filename_name, harm_freq, anharm_matrix, Egrain_line, barri
         anharm_matrix + anharm_matrix.T - np.diag(np.diag(anharm_matrix))
     )
     img_anharm_array = full_anharm_matrix[img_index]
-    print(filename_name)
-    print(anharm_matrix.shape)
-    print(anharm_matrix)
-    print(img_anharm_array.shape)
-    print(img_anharm_array)
     img_anharm_array = np.delete(img_anharm_array, img_index)
 
     # remake the harm_freq and anharm_matrix for sctst.dat
