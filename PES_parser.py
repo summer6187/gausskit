@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 from ase.units import Hartree, kcal, mol
 from gausskit.multiwellkit.run_thermo import run_PES_thermo
+from gausskit.multiwellkit.run_multiwell import run_PES_multiwell
 from gausskit.molecules import Molecules
 import collections
 import json
@@ -254,6 +255,21 @@ if __name__ == "__main__":
         }
         thermo_method_warning(thermo_methods, PES_methods)
 
+
+    # set Multiwell Method
+    calc_multiwell = False
+    if "Multiwell" in config.sections():
+        calc_thermo = True
+        Multiwell_method = config_section_map(config, "Multiwell")
+        multiwell_list = list(Multiwell_method["multiwell"].split())
+        multiwell_dir = Multiwell_method["multiwell_dir"]
+        multiwell_anharm = config_getboolean(config, "Multiwell", "anharm")
+
+        multiwell_methods = {
+            "multiwell_anharm": multiwell_anharm,
+        }
+
+
     PES_datasets = {}
     # parse the rest sections
     for section in config.sections():
@@ -278,4 +294,13 @@ if __name__ == "__main__":
             thermo_path = os.path.join(thermo_dir, "thermo_" + _thermo_PES)
             print("thermo calculation of", _thermo_PES)
             run_PES_thermo(PES_data, thermo_methods, thermo_path, verbose=True)
+
+    # multiwell calc
+    if calc_multiwell:
+        print("multiwell calculation")
+        for _multiwell_PES in multiwell_list:
+            PES_data = PES_datasets[_multiwell_PES]
+            multiwell_path = os.path.join(multiwell_dir, "multiwell_" + _multiwell_PES)
+            print("multiwell calculation of", _multiwell_PES)
+            run_PES_multiwell(PES_data, multiwell_methods, multiwell_path, verbose=True)
 
