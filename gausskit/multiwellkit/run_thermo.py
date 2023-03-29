@@ -230,7 +230,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
                                 vib_index = int(line.split()[0])
                                 itemindex = corrected_vibs.index(vib_index)
                                 vib_type = "qrot"
-                                line = f"{vib_index:>3}{vib_type:>6}{mol_hindrot.hinderedrotor._reduced_moms[itemindex]:>15}  1.0    1"
+                                line = f"{vib_index:>3}{vib_type:>6}{mol_hindrot.hinderedrotor._reduced_moms[itemindex]:>15}   {mol_hindrot.hinderedrotor._symmetry_numbers[itemindex]}   1"
                     if line[-1:] == "\n":
                         reaction_lines.append(line[:-1])
                     else:

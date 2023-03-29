@@ -52,7 +52,7 @@ class Molecules(Atoms):
         self._method = None
         self._basis = None
         self._ts = None
-        self._hinderedrotor = Hinderedrotor([],[],[],[])
+        self._hinderedrotor = Hinderedrotor([],[],[],[],[],[],[])
         self.logpath = None
 
     @property
