@@ -26,13 +26,28 @@ def fix_crp_file(filename, add_text="    GOOD   VPT4A"):
 
 def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egrain_line="10	3000	4000	50000"):
 
+    # Parse thermo_methods information
     thermo_tunneling = thermo_methods["thermo_tunneling"]
     thermo_hinderedrotor = thermo_methods["thermo_hinderedrotor"]
     thermo_anharm = thermo_methods["thermo_anharm"]
+    thermo_temp = thermo_methods["thermo_temp"]
+    thermo_pressure = thermo_methods["thermo_pressure"]
+
+    if "default" in thermo_temp:
+        temp = "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000"
+    else:
+        temp = thermo_temp
+    if "default" in thermo_pressure:
+        pressure = "1"
+    else:
+        pressure = thermo_pressure
 
     # gather PES_info
+    # item_list: Mol1, TS2, Mol3
     item_list =  []
+    # item_mol_name_list: HCFC133a, HCFC133a-OH_ts, Radical133a
     item_mol_name_list = []
+    # item_Mol_list: 3 Molecules objects
     item_Mol_list = []
     for n, PES_num in enumerate(PES_data):
         for item in PES_data[PES_num]["PES_items"]:
@@ -54,6 +69,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
             break
     
     # prepare hindered rot calculations
+    # hindrot_item_Mol_dict: Molecule Objects if exists hindrot calculation
     if thermo_hinderedrotor:
         hindrot_item_Mol_dict = {}
         for n, PES_num in enumerate(PES_data):
@@ -80,13 +96,15 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
 
     # 2. write gauss2multi.cfg
     g2m_filepath = os.path.join(thermo_path, "gauss2multi.cfg")
+
     g2m_lines = ["KCAL", 
-                "12", 
-                "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000",
+                str(len(temp.split())), 
+                temp,
                 "ATM", 
-                "1", 
-                "1", 
+                str(len(pressure.split())), 
+                pressure, 
                 f"{Egrain_line}"]
+    
     for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
         mol = Mol
         if mol.ts:
@@ -149,13 +167,45 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
                 print(f"bdens running for {mol_name}({dummy_name})")
                 subprocess.call(command, shell=True)
             
-                
+    # 3.5.5 moment of inertia
+    # rewritre .coords file
+    if thermo_hinderedrotor:
+        for item in hindrot_item_Mol_dict:
+            filename = os.path.join(thermo_path, item + ".coords")
+            with open(filename, "r") as f:
+                lines = f.readlines()
+            mol_hindrot = hindrot_item_Mol_dict[item].hinderedrotor
+
+            # internal rotor coords information
+            internal_rotor_coords = ['']
+            for i_rotor in range(len(mol_hindrot._rotating_bonds)):
+                internal_rotor_coords.append(', '.join([str(j+1) for j in mol_hindrot._rotating_bonds[i_rotor]]))
+                internal_rotor_coords.append(str(len(mol_hindrot._rotating_groups[i_rotor])))
+                internal_rotor_coords.append(', '.join([str(j+1) for j in mol_hindrot._rotating_groups[i_rotor]]))
+                internal_rotor_coords.append('')
+            internal_rotor_coords = [j + '\n' for j in internal_rotor_coords]
+
+            # insert rotor coords information to the file
+            n_line = lines.index(' 0 , 0\n')
+            new_lines = lines[:n_line] + internal_rotor_coords + lines[n_line:]
+
+            # rewrite coords file
+            output = filename
+            with open(output, "w") as f:
+                f.writelines(new_lines)
+    
+            # run mominert
+            command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; mominert {item}.coords"
+            subprocess.call(command, shell=True)
+
+
+
     # 4. prepare thermo input file reaction.dat
     reaction_f = open(os.path.join(thermo_path, "reaction.dat"), "w")
 
     reaction_lines = ["KCAL   MCC", 
-                    "12", 
-                    "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000",
+                    str(len(temp.split())), 
+                    temp,
                     f"{len(item_list)}",
                     ]
 
