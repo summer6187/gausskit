@@ -170,6 +170,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
     # 3.5.5 moment of inertia
     # rewritre .coords file
     if thermo_hinderedrotor:
+        hindrot_item_reduced_mominert_dict = {}
         for item in hindrot_item_Mol_dict:
             filename = os.path.join(thermo_path, item + ".coords")
             with open(filename, "r") as f:
@@ -198,7 +199,13 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
             command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; mominert {item}.coords"
             subprocess.call(command, shell=True)
 
-
+            # read moment of inertia from .co.out files
+            filename = os.path.join(thermo_path, item + ".co.out")
+            with open(filename, "r") as f:
+                lines = f.readlines()
+            mominert_lines = [line for line in lines if "REDUCED MOMENT OF INERTIA" in line]
+            reduced_moment_of_inertia = [float(mominert_line.split(":")[1].split()[0]) for mominert_line in mominert_lines]
+            hindrot_item_reduced_mominert_dict[item] = reduced_moment_of_inertia
 
     # 4. prepare thermo input file reaction.dat
     reaction_f = open(os.path.join(thermo_path, "reaction.dat"), "w")
@@ -270,8 +277,8 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
                     # if not, line will not be modified
                     if thermo_hinderedrotor and dummy_name in hindrot_item_Mol_dict:
                         # vibration in xxx.therm file is One-based numbering
-                        mol_hindrot = hindrot_item_Mol_dict[dummy_name]
-                        corrected_vibs = mol_hindrot.hinderedrotor._corrected_vibs
+                        mol = hindrot_item_Mol_dict[dummy_name]
+                        corrected_vibs = mol.hinderedrotor._corrected_vibs
                         corrected_vibs = [n+1 for n in corrected_vibs]
                         # match lines like " 1   vib        56.7966  0.0    1"
                         if len(line.split()) > 1:
@@ -280,7 +287,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
                                 vib_index = int(line.split()[0])
                                 itemindex = corrected_vibs.index(vib_index)
                                 vib_type = "qrot"
-                                line = f"{vib_index:>3}{vib_type:>6}{mol_hindrot.hinderedrotor._reduced_moms[itemindex]:>15}   {mol_hindrot.hinderedrotor._symmetry_numbers[itemindex]}   1"
+                                line = line[:-1] + f"  # {vib_index:>3}{vib_type:>6}{mol.hinderedrotor._reduced_moms[itemindex]:>9.4f}(from G16){hindrot_item_reduced_mominert_dict[dummy_name][itemindex]:>9.4f}(from Mominert)   {mol.hinderedrotor._symmetry_numbers[itemindex]}   1"
                     if line[-1:] == "\n":
                         reaction_lines.append(line[:-1])
                     else:

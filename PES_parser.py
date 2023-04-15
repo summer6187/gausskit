@@ -258,8 +258,8 @@ if __name__ == "__main__":
         thermo_tunneling = config_getboolean(config, "Thermo", "tunneling")
         thermo_hinderedrotor = config_getboolean(config, "Thermo", "hinderedrotor")
         thermo_anharm = config_getboolean(config, "Thermo", "anharm")
-        thermo_temp = Thermo_method['temp_k']
-        thermo_pressure = Thermo_method['pressure_atm']
+        thermo_temp = Thermo_method["temp_k"]
+        thermo_pressure = Thermo_method["pressure_atm"]
         
         thermo_methods = {
             "thermo_tunneling": thermo_tunneling,

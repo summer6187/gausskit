@@ -1,6 +1,7 @@
 # hinderedrotor analysis
 import numpy as np
 import sys
+from ase import units
 
 class Hinderedrotor:
     def __init__(self, 
@@ -176,6 +177,8 @@ def read_hindrot(filename):
                     multiplicity.append(int(_line_list[-1]))
 
         reduced_moms = np.asarray(reduced_moms, dtype=float)
+        # convert from amu*Bohr**2 to amu*Ang^2
+        reduced_moms = reduced_moms*units.Bohr**2
         rotating_bonds = np.array(rotating_bonds)
         rotating_bonds_check = np.asarray(rotating_bonds_check, dtype=int) -1
         symmetry_numbers = np.array(symmetry_numbers)
