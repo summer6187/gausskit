@@ -226,9 +226,10 @@ def prepare_parsctst(filename_name, harm_freq, anharm_matrix, Egrain_line, barri
     img_nn = anharm_matrix[img_index][img_index]
 
     # make full anharm matrix (symmetry matrix)
-    full_anharm_matrix = (
-        anharm_matrix + anharm_matrix.T - np.diag(np.diag(anharm_matrix))
-    )
+    # full_anharm_matrix = (
+    #     anharm_matrix + anharm_matrix.T - np.diag(np.diag(anharm_matrix))
+    # )
+    full_anharm_matrix = anharm_matrix # we already have full matrix
     img_anharm_array = full_anharm_matrix[img_index]
     img_anharm_array = np.delete(img_anharm_array, img_index)
 
