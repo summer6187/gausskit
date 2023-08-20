@@ -55,8 +55,8 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
     # 2. write gauss2multi.cfg
     g2m_filepath = os.path.join(densdata_path, "gauss2multi.cfg")
     g2m_lines = ["KCAL", 
-                "12", 
-                "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000",
+                "1", 
+                "298",
                 "ATM", 
                 "1", 
                 "1", 

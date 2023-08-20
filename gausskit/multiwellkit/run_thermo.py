@@ -30,6 +30,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
     thermo_tunneling = thermo_methods["thermo_tunneling"]
     thermo_hinderedrotor = thermo_methods["thermo_hinderedrotor"]
     thermo_anharm = thermo_methods["thermo_anharm"]
+    thermo_adj_barrier = thermo_methods["thermo_adj_barrier"]
     thermo_temp = thermo_methods["thermo_temp"]
     thermo_pressure = thermo_methods["thermo_pressure"]
 
@@ -125,6 +126,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
 
     # 3.5 run bdens and/or parsctst if anharm
     # prepare bdens.dat or parsctst.dat
+    # we only have one parsctst mission, so only one set of forw. backw. barrier
     if thermo_anharm:
         for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
             mol = Mol

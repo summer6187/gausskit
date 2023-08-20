@@ -258,6 +258,10 @@ if __name__ == "__main__":
         thermo_tunneling = config_getboolean(config, "Thermo", "tunneling")
         thermo_hinderedrotor = config_getboolean(config, "Thermo", "hinderedrotor")
         thermo_anharm = config_getboolean(config, "Thermo", "anharm")
+        if "adj_barrier" in Thermo_method:
+            thermo_adj_barrier = list(Thermo_method["adj_barrier"].split())
+        else:
+            thermo_adj_barrier = []
         thermo_temp = Thermo_method["temp_k"]
         thermo_pressure = Thermo_method["pressure_atm"]
         
@@ -265,6 +269,7 @@ if __name__ == "__main__":
             "thermo_tunneling": thermo_tunneling,
             "thermo_hinderedrotor": thermo_hinderedrotor,
             "thermo_anharm": thermo_anharm,
+            "thermo_adj_barrier": thermo_adj_barrier,
             "thermo_temp": thermo_temp,
             "thermo_pressure": thermo_pressure,
         }
