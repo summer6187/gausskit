@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 from .run_thermo import fix_crp_file
+from gausskit.get_anharm_input import prepare_bdens, prepare_parsctst
 
 def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=True, Egrain_line="10	3000	4000	50000"):
     
@@ -70,7 +71,7 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
                 "1", 
                 "1", 
                 f"{Egrain_line}"]
-    for n, (well_name, Mols) in enumerate(zip(item_list,item_Mols_list)):
+    for n, (well_name, Mols) in enumerate(zip(item_list,item_Mol_list)):
         mol = Mols
         if mol.ts:
             mol_line = f"{n+1}   {dummy_name}.log     TS"
@@ -108,10 +109,10 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
                 input_list = prepare_bdens(dummy_name,harm_freq,anharm_matrix,Egrain_line)
             
             # write bdens.dat or parsctst.dat
-            output = os.path.join(thermo_path, output_datname)
+            output = os.path.join(densdata_path, output_datname)
             with open(output, "w") as f:
                 f.writelines([line + "\n" for line in input_list])
-            output = os.path.join(thermo_path, ".".join(output_datname.split(".")[1:]))
+            output = os.path.join(densdata_path, ".".join(output_datname.split(".")[1:]))
             with open(output, "w") as f:
                 f.writelines([line + "\n" for line in input_list])
             
@@ -120,16 +121,17 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
             mol_name = item_mol_name_list[n]
             if mol.ts:
                 # run parsctst
-                command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; parsctst"
+                command = f"cd {densdata_path}; module load gcc/10.3.0 openmpi/4.1.1; parsctst"
                 print(f"parsctst running for {mol_name}({dummy_name})")
                 subprocess.call(command, shell=True)
-                fix_crp_file(os.path.join(thermo_path, f"{dummy_name}.crp"))
-                fix_crp_file(os.path.join(thermo_path, f"{dummy_name}.qcrp"))
+                fix_crp_file(os.path.join(densdata_path, f"{dummy_name}.crp"))
+                fix_crp_file(os.path.join(densdata_path, f"{dummy_name}.qcrp"))
             else:
-                # run bdens
-                command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; bdens"
-                print(f"bdens running for {mol_name}({dummy_name})")
-                subprocess.call(command, shell=True)
+                # no need for runing bdens
+                pass
+                # command = f"cd {densdata_path}; module load gcc/10.3.0 openmpi/4.1.1; bdens"
+                # print(f"bdens running for {mol_name}({dummy_name})")
+                # subprocess.call(command, shell=True)
             
     # 4. prepare multiwell input file multiwell.dat
     reaction_f = open(os.path.join(multiwell_path, "multiwell.dat"), "w")
