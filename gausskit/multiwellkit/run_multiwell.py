@@ -71,8 +71,8 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
                 "1", 
                 "1", 
                 f"{Egrain_line}"]
-    for n, (well_name, Mols) in enumerate(zip(item_list,item_Mol_list)):
-        mol = Mols
+    for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
+        mol = Mol
         if mol.ts:
             mol_line = f"{n+1}   {dummy_name}.log     TS"
         else:
