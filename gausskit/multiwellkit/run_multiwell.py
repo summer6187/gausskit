@@ -1,34 +1,47 @@
 import os
 import shutil
 import subprocess
+from .run_thermo import fix_crp_file
 
 def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=True, Egrain_line="10	3000	4000	50000"):
     
+    # Parse multiwell_methods information
     multiwell_wells = multiwell_methods["multiwell_wells"]
     multiwell_products = multiwell_methods["multiwell_products"]
     multiwell_tss = multiwell_methods["multiwell_tss"]
     multiwell_anharm = multiwell_methods["multiwell_anharm"]
 
     # gather PES_info
+    # item_list: Mol1, TS2, Mol3
     item_list =  []
-    item_Mols_list = []
+    # item_mol_name_list: HCFC133a, HCFC133a-OH_ts, Radical133a
+    item_mol_name_list = []
+    # item_Mol_list: 3 Molecules objects
+    item_Mol_list = []
+    # barrier list: include forward and backward barrier
+    barrier_list = []
     for n, PES_num in enumerate(PES_data):
         for item in PES_data[PES_num]["PES_items"]:
             item_list.append(item)
-            Mols = PES_data[PES_num]["PES_items"][item]["Mols"]
-            item_Mols_list.append(Mols)
+            item_mol_name_list.append(PES_data[PES_num]["PES_items"][item]["mol_name"])
+            Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
+            item_Mol_list.append(Mol)
         if PES_data[PES_num]["final_ts"] == True:
             forwards_barrier = PES_data[PES_num]["PES_energy"]
             reverse_PES_num = list(PES_data.keys())[n+1]
             backwards_barrier = PES_data[reverse_PES_num]["reverse"]
             for item in PES_data[PES_num]["PES_items"]:
                 if PES_data[PES_num]["PES_items"][item]["ts"] == True:
-                    sorted_freq = PES_data[PES_num]["PES_items"][item]["Mols"].frequencies.copy()
+                    sorted_freq = PES_data[PES_num]["PES_items"][item]["Mol"].frequencies.copy()
                     sorted_freq.sort()
                     img_freq = sorted_freq[0]
                     if img_freq > 0:
                         print(f"Warning! Positive img_freq found {img_freq}")
-            break
+        else:
+            # for well or product mol, set dummy barrier == 0
+            forwards_barrier = 0
+            backwards_barrier = 0
+        barrier_list.append([forwards_barrier, backwards_barrier])
 
     # 1. prepare log files
     if os.path.exists(multiwell_path):
@@ -43,12 +56,8 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
     else:
         os.mkdir(densdata_path)
     
-    for n, (well_name, Mols) in enumerate(zip(item_list,item_Mols_list)):
-        mol = Mols
-        if mol.ts:
-            dummy_name = f"TS{n+1}"
-        else:
-            dummy_name = f"WELL{n+1}"
+    for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
+        mol = Mol
         dummy_logname = f"{dummy_name}.log"
         shutil.copy(mol.logpath, os.path.join(densdata_path,dummy_logname))
 
@@ -64,9 +73,9 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
     for n, (well_name, Mols) in enumerate(zip(item_list,item_Mols_list)):
         mol = Mols
         if mol.ts:
-            mol_line = f"{n+1}   TS{n+1}.log     TS"
+            mol_line = f"{n+1}   {dummy_name}.log     TS"
         else:
-            mol_line = f"{n+1}   WELL{n+1}.log   WELL"
+            mol_line = f"{n+1}   {dummy_name}.log   WELL"
         g2m_lines.append(mol_line)
 
     with open(g2m_filepath, "w") as f:
@@ -77,7 +86,51 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
     # 3. run gauss2multi
     command = f"cd {densdata_path}; module load gcc/10.3.0 openmpi/4.1.1; echo N | gauss2multi"
     subprocess.run(command, shell=True, capture_output=True)
-    
+
+    # 3.5 run bdens and/or parsctst if anharm
+    # prepare bdens.dat or parsctst.dat
+    if multiwell_anharm:
+        for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
+            mol = Mol
+            if mol.ts:
+                # parsctst
+                output_datname = f"{dummy_name}.parsctst.dat"
+                harm_freq = mol.frequencies
+                anharm_matrix = mol.anharm_matrix
+                barrier = [forwards_barrier, backwards_barrier]
+                input_list = prepare_parsctst(dummy_name,harm_freq,anharm_matrix,Egrain_line,barrier)
+
+            else:
+                # bdens
+                output_datname = f"{dummy_name}.bdens.dat"
+                harm_freq = mol.frequencies
+                anharm_matrix = mol.anharm_matrix
+                input_list = prepare_bdens(dummy_name,harm_freq,anharm_matrix,Egrain_line)
+            
+            # write bdens.dat or parsctst.dat
+            output = os.path.join(thermo_path, output_datname)
+            with open(output, "w") as f:
+                f.writelines([line + "\n" for line in input_list])
+            output = os.path.join(thermo_path, ".".join(output_datname.split(".")[1:]))
+            with open(output, "w") as f:
+                f.writelines([line + "\n" for line in input_list])
+            
+            # run bdens or parsctst
+            print("-----------------anharmonic-----------------")
+            mol_name = item_mol_name_list[n]
+            if mol.ts:
+                # run parsctst
+                command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; parsctst"
+                print(f"parsctst running for {mol_name}({dummy_name})")
+                subprocess.call(command, shell=True)
+                fix_crp_file(os.path.join(thermo_path, f"{dummy_name}.crp"))
+                fix_crp_file(os.path.join(thermo_path, f"{dummy_name}.qcrp"))
+            else:
+                # run bdens
+                command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; bdens"
+                print(f"bdens running for {mol_name}({dummy_name})")
+                subprocess.call(command, shell=True)
+            
     # 4. prepare multiwell input file multiwell.dat
     reaction_f = open(os.path.join(multiwell_path, "multiwell.dat"), "w")
 
