@@ -279,7 +279,7 @@ if __name__ == "__main__":
     # set Multiwell Method
     calc_multiwell = False
     if "Multiwell" in config.sections():
-        calc_thermo = True
+        calc_multiwell = True
         Multiwell_method = config_section_map(config, "Multiwell")
         multiwell_pes = list(Multiwell_method["multiwell_pes"].split())
         multiwell_dir = Multiwell_method["multiwell_dir"]
