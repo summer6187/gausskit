@@ -1,9 +1,11 @@
 import subprocess
-import pickle
 import os
 import shutil
-import numpy as np
+
 from gausskit.get_anharm_input import prepare_bdens, prepare_parsctst
+from gausskit.settings import Configuration
+
+config = Configuration()
 
 def fix_crp_file(filename, add_text="    GOOD   VPT4A"):
     with open(filename) as f:
@@ -121,7 +123,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
         
 
     # 3. run gauss2multi
-    command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; echo N | gauss2multi"
+    command = f"cd {thermo_path}; echo N | " + config.machine.gauss2multi_command
     subprocess.run(command, shell=True, capture_output=True)
 
     # 3.5 run bdens and/or parsctst if anharm
@@ -158,14 +160,14 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
             mol_name = item_mol_name_list[n]
             if mol.ts:
                 # run parsctst
-                command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; parsctst"
+                command = f"cd {thermo_path}; " + config.machine.parsctst_command
                 print(f"parsctst running for {mol_name}({dummy_name})")
                 subprocess.call(command, shell=True)
                 fix_crp_file(os.path.join(thermo_path, f"{dummy_name}.crp"))
                 fix_crp_file(os.path.join(thermo_path, f"{dummy_name}.qcrp"))
             else:
                 # run bdens
-                command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; bdens"
+                command = f"cd {thermo_path}; " + config.machine.bdens_command
                 print(f"bdens running for {mol_name}({dummy_name})")
                 subprocess.call(command, shell=True)
             
@@ -198,7 +200,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
                 f.writelines(new_lines)
     
             # run mominert
-            command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; mominert {item}.coords"
+            command = f"cd {thermo_path}; " + config.machine.mominert_command + " {item}.coords"
             subprocess.call(command, shell=True)
 
             # read moment of inertia from .co.out files
@@ -303,5 +305,5 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
     reaction_f.close()
 
     # 5. run thermo
-    command = f"cd {thermo_path}; module load gcc/10.3.0 openmpi/4.1.1; thermo reaction.dat"
+    command = f"cd {thermo_path}; " + config.machine.thermo_command
     subprocess.call(command, shell=True)

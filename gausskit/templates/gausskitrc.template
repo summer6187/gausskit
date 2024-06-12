@@ -1,0 +1,12 @@
+# System informations to get multiwell running, please adjust:
+# When adjusted, please copy to ~/.gausskitrc
+
+[machine]
+ gauss2multi_command = gauss2multi
+ parsctst_command = parsctst
+ bdens_command = bdens
+ thermo_command = thermo
+ mominert_command = mominert
+ multiwell_command = multiwell
+
+
