@@ -2,7 +2,7 @@ import subprocess
 import os
 import shutil
 
-from gausskit.get_anharm_input import prepare_bdens, prepare_parsctst
+from gausskit.gaussian.anharm import prepare_bdens, prepare_parsctst
 from gausskit.settings import Configuration
 
 config = Configuration()

@@ -1,8 +1,8 @@
 import os
 import shutil
 import subprocess
-from .run_thermo import fix_crp_file
-from gausskit.get_anharm_input import prepare_bdens, prepare_parsctst
+from .thermo import fix_crp_file
+from gausskit.gaussian.anharm import prepare_bdens, prepare_parsctst
 
 def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=True, Egrain_line="10	3000	4000	50000"):
     

@@ -2,7 +2,7 @@
 read G4 file, get energy
 """
 import sys
-from gausskit.log_parser import *
+from .log_parser import *
 
 
 def get_g4_energy(result_blocks):

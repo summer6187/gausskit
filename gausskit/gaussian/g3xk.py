@@ -4,7 +4,7 @@ read G3XK file, get energy
 E_SO is not included in the calculation
 """
 import sys
-from gausskit.log_parser import *
+from .log_parser import *
 
 
 def get_E_SO():

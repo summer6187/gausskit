@@ -1,11 +1,12 @@
-from ase import Atoms
-from .log_parser import read_log_energy, read_log_parameters
-from ase.io.gaussian import read_gaussian_out
-from ase.symbols import symbols2numbers
-from .get_anharm_input import read_harm_freq, read_anharm_matrix, read_harm_freq_another
-from .hindrot import Hinderedrotor, read_hindrot
 import numpy as np
 import os
+
+from ase import Atoms
+from ase.io.gaussian import read_gaussian_out
+from ase.symbols import symbols2numbers
+from gausskit.gaussian.log_parser import read_log_energy, read_log_parameters
+from gausskit.gaussian.anharm import read_harm_freq, read_anharm_matrix, read_harm_freq_another
+from gausskit.gaussian.hindrot import Hinderedrotor, read_hindrot
 
 
 def method_parser(method):

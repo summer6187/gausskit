@@ -1,7 +1,8 @@
 import os, pickle, re, sys, json
-from gausskit.molecules import Molecules
-from PES_parser import match_method
 import numpy as np
+
+from gausskit.molecules import Molecules
+from potential_energy_surface import match_method
 
 # for filename in os.walk("."): # (dirpath, dirnames, filenames)
 #     print(filename)

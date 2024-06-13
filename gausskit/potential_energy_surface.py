@@ -1,13 +1,12 @@
 import sys, os
 import configparser
 import pickle
-import numpy as np
-from ase.units import Hartree, kcal, mol
-from gausskit.multiwellkit.run_thermo import run_PES_thermo
-from gausskit.multiwellkit.run_multiwell import run_PES_multiwell
-from gausskit.molecules import Molecules
-import collections
 import json
+
+from ase.units import Hartree, kcal, mol
+from gausskit.multiwell.thermo import run_PES_thermo
+from gausskit.multiwell.multiwell import run_PES_multiwell
+from gausskit.molecules import Molecules
 
 
 def config_section_map(config, section):

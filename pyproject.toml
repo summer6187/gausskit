@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gausskit"
+authors = [
+    { name = "Yufei Lin", email = "summer6187@outlook.com" },
+]
+description = "Interfacing Gaussian09/16 and Multiwell"
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ['transition state theory', 'first principle', 'quantum chemistry']
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: python :: 3",
+]
+dependencies = [
+    "numpy>=1.17.5",
+    "matplotlib>=3.1",
+    "ase>=3.20.0",
+    "click>=8.0",
+    "click_aliases>=1.0",
+    "click_completion>=0.5.2",
+    "jconfigparser>=0.1.2",
+    "pandas<2.0",
+]
+dynamic = ["version"]
+
+[tool.setuptools.packages.find]
+where = ["."]  # list of folders that contain the packages (["."] by default)
+include = ["gausskit", "gausskit.*"]  # exclude packages matching these glob patterns (empty by default)
+namespaces = true  # to disable scanning PEP 420 namespaces (true by default)
+

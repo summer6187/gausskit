@@ -1,6 +1,6 @@
 # hinderedrotor analysis
-import numpy as np
 import sys
+import numpy as np
 from ase import units
 
 class Hinderedrotor:

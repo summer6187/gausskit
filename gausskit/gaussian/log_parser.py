@@ -1,7 +1,6 @@
 import re, sys
 import string
 from ase.io.gaussian import read_gaussian_out
-import numpy as np
 from ase.units import Hartree
 
 
@@ -316,8 +315,8 @@ def remove_duplicate_methods(method_list, basis_list):
     return new_m_list, new_b_list
 
 def read_log_energy(
-    filename: string,
-    method: string = None,
+    filename: str,
+    method: str = None,
     freq: bool = False,
     anharm: bool = False,
     verbose: bool = False,
@@ -372,7 +371,7 @@ def read_log_energy(
 # like shit but maybe it work
 def read_log_parameters(    
     filename,
-    method: string = None,
+    method: str = None,
     freq: bool = None,
     anharm: bool = None,
     hindrot:bool = None,
