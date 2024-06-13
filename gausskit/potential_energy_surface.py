@@ -224,6 +224,7 @@ def PES_parser(config):
         anharm_method = config_getboolean(config, "Method", "anharm")
         # load database
         filename = PES_method["database"]
+        print(f"Loading database from {filename}")
         if filename.split(".")[-1] == "pickle":
             with open(filename, "rb") as f:
                 database = pickle.load(f)

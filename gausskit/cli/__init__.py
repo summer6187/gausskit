@@ -43,11 +43,11 @@ def info(obj, file):
 
 @cli.command()
 @click.argument("directory", type=complete_files)
-@click.option("-o", "--outfile", default="database.pickle", show_default=True)
+@click.option("-o", "--outfile", default="database.json", show_default=True)
 @click.option("--force", is_flag=True, help="enfore parsing of output file")
 @click.pass_obj
 def output(obj, directory, outfile, force):
-    from gausskit.database import append_species
+    from gausskit.database import append_species, write_database
     
     outfile = Path(outfile)
     if not force and outfile.exists():
@@ -71,9 +71,15 @@ def output(obj, directory, outfile, force):
         print(f"Parsing filepath {filepath}")
         database = append_species(database, filepath)
 
-    # write database in pickle binary file
-    with open(outfile, "wb") as f:
-        pickle.dump(database,f)
+    # write database
+    click.echo(f"Writing to {outfile}")
+    filetype = outfile.suffix
+    if filetype == ".pickle":
+        # write database in pickle binary file
+        with open(outfile, "wb") as f:
+            pickle.dump(database,f)
+    elif filetype == ".json":
+        write_database(database, outfile)
 
     finish_line()
 

@@ -1,6 +1,6 @@
 import pickle, re, json
 import argparse
-from pathlib import Path
+from pathlib import Path, PosixPath
 import numpy as np
 
 from gausskit.molecules import Molecules
@@ -40,7 +40,6 @@ def append_species(database, filepath:Path, method=None):
     else:
         database[simple_name][method] = new_mol
         
-
     return database
 
 class NumpyEncoder(json.JSONEncoder):
@@ -52,7 +51,13 @@ class NumpyEncoder(json.JSONEncoder):
             return float(obj)
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
+        elif isinstance(obj, PosixPath):
+            return str(obj)
         return json.JSONEncoder.default(self, obj)
+
+def jsonIndentLimit(jsonString, indent, limit):
+    regexPattern = re.compile(f'\n({indent}){{{limit}}}(({indent})+|(?=(}}|])))')
+    return regexPattern.sub('', jsonString)
 
 def get_name_info(ds: dict, name: str):
     name_info_list = []
@@ -65,6 +70,18 @@ def get_name_info(ds: dict, name: str):
         name_info_list.append(method_info)
 
     return name_info_list
+
+def write_database(database: dict, outfile:Path=Path("database.json")):
+    database_dict = {}
+    for item in database:
+        database_dict[item] = {}
+        for method in database[item]:
+            database_dict[item][method] = database[item][method].to_dict()
+    dumped = json.dumps(database_dict,indent=2,cls=NumpyEncoder)
+    dumped = jsonIndentLimit(dumped, '  ', 3)
+    with open(outfile, "w") as f:
+        f.write(dumped)
+    return
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

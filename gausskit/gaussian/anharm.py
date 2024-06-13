@@ -209,7 +209,7 @@ def format_freq_matrix(harm_freq, anharm_matrix):
 
 
 def prepare_parsctst(filename_name, harm_freq, anharm_matrix, Egrain_line, barrier=[]):
-    
+    harm_freq = np.asarray(harm_freq)
     img_freq = 0
     img_index = None
     ind_array = np.argsort(harm_freq)
