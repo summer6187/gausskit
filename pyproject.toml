@@ -4,10 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gausskit"
+version = "0.0.1"
 authors = [
     { name = "Yufei Lin", email = "summer6187@outlook.com" },
 ]
-description = "Interfacing Gaussian09/16 and Multiwell"
+description = "Transition state theory code. Interfacing Gaussian09/16 and Multiwell"
 readme = "README.md"
 requires-python = ">=3.9"
 keywords = ['transition state theory', 'first principle', 'quantum chemistry']
@@ -23,9 +24,10 @@ dependencies = [
     "click_aliases>=1.0",
     "click_completion>=0.5.2",
     "jconfigparser>=0.1.2",
-    "pandas<2.0",
 ]
-dynamic = ["version"]
+
+[project.scripts]
+gausskit = 'gausskit.cli:cli'
 
 [tool.setuptools.packages.find]
 where = ["."]  # list of folders that contain the packages (["."] by default)

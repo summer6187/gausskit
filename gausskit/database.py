@@ -4,7 +4,6 @@ from pathlib import Path
 import numpy as np
 
 from gausskit.molecules import Molecules
-from potential_energy_surface import match_method
 
 def simplify_raw_name(raw_name):
     match_string = ["g3xk", "g3x-k", "g4", "anharm", "opt"]
@@ -55,6 +54,17 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
 
+def get_name_info(ds: dict, name: str):
+    name_info_list = []
+    for _method in ds[name].keys():
+        method_info = _method
+        if ds[name][_method].ts:
+            method_info += "_ts"
+        if ds[name][_method].frequencies.any():
+            method_info += "_freq"
+        name_info_list.append(method_info)
+
+    return name_info_list
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

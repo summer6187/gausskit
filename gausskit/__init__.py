@@ -1,1 +1,6 @@
-import os, sys; sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+import pkg_resources
+
+from ._defaults import DEFAULT_CONFIG_FILE
+from .settings import Configuration, Settings
+
+__version__ = str(pkg_resources.require("gausskit")[0].version)
