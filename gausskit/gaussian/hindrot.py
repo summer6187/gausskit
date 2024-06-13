@@ -1,5 +1,5 @@
 # hinderedrotor analysis
-import sys
+import argparse
 import numpy as np
 from ase import units
 
@@ -202,7 +202,11 @@ def read_hindrot(filename):
             print("hindered rotor not found!")
                 
 if __name__ == "__main__":
-    filename = sys.argv[1]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", help="example.log gaussian output file")
+    args = parser.parse_args()
+
+    filename = args.file
     hinderedrotor = read_hindrot(filename)
     print(hinderedrotor._reduced_moms)
     print(hinderedrotor._rotating_bonds)

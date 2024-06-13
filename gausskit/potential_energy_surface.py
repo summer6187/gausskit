@@ -1,4 +1,5 @@
-import sys, os
+import argparse
+from pathlib import Path
 import configparser
 import pickle
 import json
@@ -96,7 +97,7 @@ def get_item_ts(item, PES_method_dict):
 
     return _ts
 
-def parse_this_PES(database, PES_dict, PES_num_list, PES_methods, verbose=False):
+def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
     
     # init PES_data
     PES_data = {}
@@ -211,13 +212,7 @@ def thermo_method_warning(thermo_methods, PES_methods):
             exit()
     return
 
-if __name__ == "__main__":
-    config = configparser.ConfigParser()
-
-    # filename = "testcases/PES.in"
-    filename = sys.argv[1]
-    config.read(filename)
-
+def PES_parser(config):
     # set PES Method
     if "Method" not in config.sections():
         print("No Method section found!")
@@ -308,7 +303,7 @@ if __name__ == "__main__":
             PES_num_list = PES_dict.keys()
             PES_num_list = [int(num) for num in PES_num_list]
             PES_num_list.sort()
-            PES_data = parse_this_PES(database, PES_dict, PES_num_list, PES_methods, verbose=True)
+            PES_data = get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=True)
             PES_datasets[section] = PES_data
 
     # thermo calc
@@ -316,7 +311,7 @@ if __name__ == "__main__":
         print("thermo calculation")
         for _thermo_PES in thermo_list:
             PES_data = PES_datasets[_thermo_PES]
-            thermo_path = os.path.join(thermo_dir, "thermo_" + _thermo_PES)
+            thermo_path = Path(thermo_dir) / f"thermo_{_thermo_PES}"
             print("thermo calculation of", _thermo_PES)
             run_PES_thermo(PES_data, thermo_methods, thermo_path, verbose=True)
 
@@ -325,7 +320,19 @@ if __name__ == "__main__":
         print("multiwell calculation")
         for _multiwell_PES in multiwell_pes:
             PES_data = PES_datasets[_multiwell_PES]
-            multiwell_path = os.path.join(multiwell_dir, "multiwell_" + _multiwell_PES)
+            multiwell_path = Path(multiwell_dir) / f"multiwell_{_multiwell_PES}"
             print("multiwell calculation of", _multiwell_PES)
             run_PES_multiwell(PES_data, multiwell_methods, multiwell_path, verbose=True)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", help="PES.in file")
+    args = parser.parse_args()
+
+    config = configparser.ConfigParser()
+
+    filename = args.file
+    config.read(filename)
+    PES_parser(config)
 

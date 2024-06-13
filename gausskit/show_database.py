@@ -1,5 +1,5 @@
+import argparse
 import pickle
-import sys
 
 def get_name_info(ds: dict, name: str):
     name_info_list = []
@@ -14,7 +14,12 @@ def get_name_info(ds: dict, name: str):
     return name_info_list
 
 if __name__ == "__main__":
-    filename = sys.argv[1]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", help="database file")
+    args = parser.parse_args()
+
+    filename = args.file
+    # load database.pickle file
     with open(filename, "rb") as f:
         ds = pickle.load(f)
 

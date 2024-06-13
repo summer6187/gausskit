@@ -1,5 +1,6 @@
-import subprocess
+from pathlib import Path
 import os
+import subprocess
 import shutil
 
 from gausskit.gaussian.anharm import prepare_bdens, prepare_parsctst
@@ -82,23 +83,24 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
 
     if thermo_path == None:
         thermo_path = "testcases/thermo_test"
+    thermo_path = Path(thermo_path)
     if verbose:
         print(item_mol_name_list)
 
     # 1. prepare log files
-    if os.path.exists(thermo_path):
+    if thermo_path.exists():
         pass
     else:
-        os.mkdir(thermo_path)
+        thermo_path.mkdir()
 
     for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
         mol = Mol
         dummy_logname = f"{dummy_name}.log"
-        shutil.copy(mol.logpath, os.path.join(thermo_path,dummy_logname))
+        shutil.copy(mol.logpath, thermo_path /dummy_logname)
 
 
     # 2. write gauss2multi.cfg
-    g2m_filepath = os.path.join(thermo_path, "gauss2multi.cfg")
+    g2m_filepath = thermo_path / "gauss2multi.cfg"
 
     g2m_lines = ["KCAL", 
                 str(len(temp.split())), 
@@ -148,10 +150,10 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
                 input_list = prepare_bdens(dummy_name,harm_freq,anharm_matrix,Egrain_line)
             
             # write bdens.dat or parsctst.dat
-            output = os.path.join(thermo_path, output_datname)
+            output = thermo_path / output_datname
             with open(output, "w") as f:
                 f.writelines([line + "\n" for line in input_list])
-            output = os.path.join(thermo_path, ".".join(output_datname.split(".")[1:]))
+            output = thermo_path / ".".join(output_datname.split(".")[1:])
             with open(output, "w") as f:
                 f.writelines([line + "\n" for line in input_list])
             
@@ -163,8 +165,8 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
                 command = f"cd {thermo_path}; " + config.machine.parsctst_command
                 print(f"parsctst running for {mol_name}({dummy_name})")
                 subprocess.call(command, shell=True)
-                fix_crp_file(os.path.join(thermo_path, f"{dummy_name}.crp"))
-                fix_crp_file(os.path.join(thermo_path, f"{dummy_name}.qcrp"))
+                fix_crp_file(thermo_path / f"{dummy_name}.crp")
+                fix_crp_file(thermo_path / f"{dummy_name}.qcrp")
             else:
                 # run bdens
                 command = f"cd {thermo_path}; " + config.machine.bdens_command
@@ -176,7 +178,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
     if thermo_hinderedrotor:
         hindrot_item_reduced_mominert_dict = {}
         for item in hindrot_item_Mol_dict:
-            filename = os.path.join(thermo_path, item + ".coords")
+            filename = thermo_path / f"{item}.coords"
             with open(filename, "r") as f:
                 lines = f.readlines()
             mol_hindrot = hindrot_item_Mol_dict[item].hinderedrotor
@@ -204,7 +206,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
             subprocess.call(command, shell=True)
 
             # read moment of inertia from .co.out files
-            filename = os.path.join(thermo_path, item + ".co.out")
+            filename = thermo_path / "{item}.co.out"
             with open(filename, "r") as f:
                 lines = f.readlines()
             mominert_lines = [line for line in lines if "REDUCED MOMENT OF INERTIA" in line]
@@ -212,7 +214,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
             hindrot_item_reduced_mominert_dict[item] = reduced_moment_of_inertia
 
     # 4. prepare thermo input file reaction.dat
-    reaction_f = open(os.path.join(thermo_path, "reaction.dat"), "w")
+    reaction_f = open(thermo_path / "reaction.dat", "w")
 
     reaction_lines = ["KCAL   MCC", 
                     str(len(temp.split())), 
@@ -225,7 +227,7 @@ def run_PES_thermo(PES_data, thermo_methods, thermo_path=None, verbose=True, Egr
         mol = Mol
         dummy_thermname = f"{dummy_name}.therm"
 
-        with open(os.path.join(thermo_path, dummy_thermname)) as f:
+        with open(thermo_path / dummy_thermname) as f:
             mol_lines = f.readlines()
             if mol.ts:
                 # if no tunneling, set img_freq and backwards_barrier to 0

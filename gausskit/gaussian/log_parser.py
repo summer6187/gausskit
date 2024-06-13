@@ -1,5 +1,6 @@
-import re, sys
-import string
+import re
+import argparse
+
 from ase.io.gaussian import read_gaussian_out
 from ase.units import Hartree
 
@@ -485,7 +486,11 @@ def read_log_parameters(
 
 
 if __name__ == "__main__":
-    filename = sys.argv[1]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", help="example.log gaussian output file")
+    args = parser.parse_args()
+
+    filename = args.file
     parameters = read_log_parameters(filename)
     anharm = parameters["anharm"]
     freq = parameters["freq"]

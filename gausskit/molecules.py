@@ -1,5 +1,5 @@
+from pathlib import Path
 import numpy as np
-import os
 
 from ase import Atoms
 from ase.io.gaussian import read_gaussian_out
@@ -227,7 +227,7 @@ class Molecules(Atoms):
         return new_mol
 
     def set_filepath(self, filepath):
-        logpath = os.path.abspath(filepath)
+        logpath = Path(filepath).resolve()
         self.logpath = logpath
         return
 

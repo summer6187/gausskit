@@ -1,11 +1,10 @@
-import os, pickle, re, sys, json
+import pickle, re, json
+import argparse
+from pathlib import Path
 import numpy as np
 
 from gausskit.molecules import Molecules
 from potential_energy_surface import match_method
-
-# for filename in os.walk("."): # (dirpath, dirnames, filenames)
-#     print(filename)
 
 def simplify_raw_name(raw_name):
     match_string = ["g3xk", "g3x-k", "g4", "anharm", "opt"]
@@ -24,9 +23,8 @@ def parse_species(filepath):
     return Molecules.from_log(filepath)
 
 
-def append_species(database, filepath, method=None):
-    file_split_list = filepath.split("/")
-    raw_name = file_split_list[-1].split(".")[-2]
+def append_species(database, filepath:Path, method=None):
+    raw_name = filepath.stem
     simple_name = simplify_raw_name(raw_name)
     new_mol = parse_species(filepath)
     method = new_mol.method
@@ -59,24 +57,23 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("directory", help="directory where contains gaussian log files")
+    args = parser.parse_args()
 
-    if len(sys.argv) < 2:
-        database_path = "."    
-    else:
-        database_path = sys.argv[1]
+    database_path = Path(args.directory)
+    print(f"Parsing every log files in this directory: {database_path.resolve()}")
 
     database = {}
 
-    filenames_list = [
-        os.path.join(dirpath, f)
-        for (dirpath, dirnames, filenames) in os.walk(database_path)
-        for f in filenames
-    ]
-    log_filename_list = [
-        filename for filename in filenames_list if filename.split(".")[-1] == "log"
-    ]
+    logfile_list = []
+    for path_object in database_path.rglob('*'):
+        if path_object.is_file() and path_object.suffix == ".log":
+            logfile_list.append(path_object)
 
-    for filepath in log_filename_list:
+
+    for logfile in logfile_list:
+        filepath = logfile.resolve()
         print(f"Parsing filepath {filepath}")
         database = append_species(database, filepath)
 

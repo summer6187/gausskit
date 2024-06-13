@@ -1,7 +1,9 @@
+from pathlib import Path
 import os
 import shutil
 import subprocess
-from .thermo import fix_crp_file
+
+from gausskit.multiwell.thermo import fix_crp_file
 from gausskit.gaussian.anharm import prepare_bdens, prepare_parsctst
 
 def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=True, Egrain_line="10	3000	4000	50000"):
@@ -45,25 +47,26 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
         barrier_list.append([forwards_barrier, backwards_barrier])
 
     # 1. prepare log files
-    if os.path.exists(multiwell_path):
+    multiwell_path = Path(multiwell_path)
+    if multiwell_path.exists():
         pass
     else:
-        os.mkdir(multiwell_path)
+        multiwell_path.mkdir()
 
     # prepare DensData dir
-    densdata_path = os.path.join(multiwell_path, "DensData")
-    if os.path.exists(densdata_path):
+    densdata_path = multiwell_path / "DensData"
+    if densdata_path.exists():
         pass
     else:
-        os.mkdir(densdata_path)
+        densdata_path.mkdir()
     
     for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
         mol = Mol
         dummy_logname = f"{dummy_name}.log"
-        shutil.copy(mol.logpath, os.path.join(densdata_path,dummy_logname))
+        shutil.copy(mol.logpath, densdata_path /dummy_logname)
 
     # 2. write gauss2multi.cfg
-    g2m_filepath = os.path.join(densdata_path, "gauss2multi.cfg")
+    g2m_filepath = densdata_path / "gauss2multi.cfg"
     g2m_lines = ["KCAL", 
                 "1", 
                 "298",
@@ -103,10 +106,10 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
                 input_list = prepare_parsctst(dummy_name,harm_freq,anharm_matrix,Egrain_line,barrier)
 
                 # write bdens.dat or parsctst.dat
-                output = os.path.join(densdata_path, output_datname)
+                output = densdata_path / output_datname
                 with open(output, "w") as f:
                     f.writelines([line + "\n" for line in input_list])
-                output = os.path.join(densdata_path, ".".join(output_datname.split(".")[1:]))
+                output = densdata_path / ".".join(output_datname.split(".")[1:])
                 with open(output, "w") as f:
                     f.writelines([line + "\n" for line in input_list])
 
@@ -118,8 +121,8 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
                     command = f"cd {densdata_path}; module load gcc/10.3.0 openmpi/4.1.1; parsctst"
                     print(f"parsctst running for {mol_name}({dummy_name})")
                     subprocess.call(command, shell=True)
-                    fix_crp_file(os.path.join(densdata_path, f"{dummy_name}.crp"))
-                    fix_crp_file(os.path.join(densdata_path, f"{dummy_name}.qcrp"))
+                    fix_crp_file(densdata_path / f"{dummy_name}.crp")
+                    fix_crp_file(densdata_path / f"{dummy_name}.qcrp")
             else:
                 # bdens
                 pass
@@ -140,5 +143,5 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
     n_channel = 1
     well_line = f"{n_channel}    'WELL{n_channel}'     0.00 {n_channel}" 
 
-    # reaction_f = open(os.path.join(multiwell_path, "multiwell.dat"), "w")
+    # reaction_f = open(multiwell_path / "multiwell.dat", "w")
     return
