@@ -143,6 +143,7 @@ def verbose_print(Eele, thermal_data):
         % ("G(" + str(thermal_data.Temp)[:6] + "K) =", Eele + thermal_data.DE_G)
     )
 
+
 def get_E_SO():
     # get E_SO is set to 0
     return 0
@@ -246,6 +247,7 @@ def read_g3xk_energy(filename, anharm=False, verbose=False):
         }
         return energy
 
+
 def get_g4_energy(result_blocks):
 
     energy_dict = {
@@ -286,9 +288,18 @@ def read_g4_energy(filename, anharm=False, verbose=False):
         }
         return energy
 
+
 def check_g3xk_method(method_list):
     _g3xk = False
-    g3xk_method_list = ['m062x/6-31g(2df,p)', 'm062x/6-31g(2df,p)', 'mp2(full)/gtlarge', 'mp4(fc)/6-31g(2df,p)', 'mp4(fc)/6-31+g(d)', 'ccsd(t,e4t,maxcyc=999,t1diag)/6-31g(d)', 'hf/gen']
+    g3xk_method_list = [
+        "m062x/6-31g(2df,p)",
+        "m062x/6-31g(2df,p)",
+        "mp2(full)/gtlarge",
+        "mp4(fc)/6-31g(2df,p)",
+        "mp4(fc)/6-31+g(d)",
+        "ccsd(t,e4t,maxcyc=999,t1diag)/6-31g(d)",
+        "hf/gen",
+    ]
     if len(g3xk_method_list) == len(method_list):
         _g3xk = True
 
@@ -298,12 +309,13 @@ def check_g3xk_method(method_list):
 
     return _g3xk
 
+
 def remove_duplicate_methods(method_list, basis_list):
     clean_mstring_list = []
     for method, basis in zip(method_list, basis_list):
         if method[0].lower() == "u" or method[0].lower() == "r":
             method = method[1:]
-        mstring = "/".join([method,basis])
+        mstring = "/".join([method, basis])
         if mstring not in clean_mstring_list:
             clean_mstring_list.append(mstring)
 
@@ -314,6 +326,7 @@ def remove_duplicate_methods(method_list, basis_list):
         new_b_list.append(mstring.split("/")[1])
 
     return new_m_list, new_b_list
+
 
 def read_log_energy(
     filename: str,
@@ -335,12 +348,12 @@ def read_log_energy(
     # special method
     if method:
         if method.lower() == "g3xk" or method.lower() == "g3x-k":
-            g3xk_energy = read_g3xk_energy(filename,anharm)
+            g3xk_energy = read_g3xk_energy(filename, anharm)
             Eele = g3xk_energy["Eele"]
             thermal_data = g3xk_energy
 
         elif method.lower() == "g4":
-            g4_energy = read_g4_energy(filename,anharm)
+            g4_energy = read_g4_energy(filename, anharm)
             Eele = g4_energy["Eele"]
             thermal_data = g4_energy
         # normal calculation
@@ -350,7 +363,7 @@ def read_log_energy(
             # parse log file using ase.io.gaussian
             with open(filename, "r", encoding="utf-8") as f:
                 gaussian_out = read_gaussian_out(f)
-                Eele = gaussian_out.get_total_energy()/Hartree
+                Eele = gaussian_out.get_total_energy() / Hartree
 
     # if verbose, print the result in a formated way
     if verbose:
@@ -369,20 +382,20 @@ def read_log_energy(
 
     return energy
 
+
 # like shit but maybe it work
-def read_log_parameters(    
+def read_log_parameters(
     filename,
     method: str = None,
     freq: bool = None,
     anharm: bool = None,
-    hindrot:bool = None,
+    hindrot: bool = None,
     verbose: bool = False,
-    ):
+):
 
-    
     with open(filename) as f:
         lines = f.readlines()
-    
+
     result_blocks = get_result_blocks(lines)
 
     parameters_list = []
@@ -393,18 +406,20 @@ def read_log_parameters(
             parameters["anharm"] = True
         else:
             parameters["anharm"] = False
-        
-        if "hindrot" in parameter_line.lower() or \
-            "hinderedrotor" in parameter_line.lower():
+
+        if (
+            "hindrot" in parameter_line.lower()
+            or "hinderedrotor" in parameter_line.lower()
+        ):
             parameters["hindrot"] = True
         else:
             parameters["hindrot"] = False
-        
+
         if "freq" in parameter_line.lower():
             parameters["freq"] = True
         else:
             parameters["freq"] = False
-        
+
         for item in parameter_line.split():
             found_method = False
             if item.lower() == "g4":
@@ -419,9 +434,9 @@ def read_log_parameters(
         if not found_method:
             parameters["method"] = result_block.split("\\")[4]
             parameters["basis"] = result_block.split("\\")[5]
-        
+
         parameters_list.append(parameters)
-    
+
     overall_parameters = {}
     _anharm = False
     _hindrot = False
@@ -441,10 +456,12 @@ def read_log_parameters(
             _freq = True
         if parameters["method"] == "G4":
             _g4 = True
-        _method_list.append("/".join([parameters["method"], parameters["basis"]]).lower())
+        _method_list.append(
+            "/".join([parameters["method"], parameters["basis"]]).lower()
+        )
         overall_method.append(parameters["method"])
         overall_basis.append(parameters["basis"])
-    
+
     _g3xk = check_g3xk_method(_method_list)
 
     if _g4:
@@ -454,7 +471,9 @@ def read_log_parameters(
         _method = "G3X-K"
         _basis = ""
     else:
-        overall_method, overall_basis = remove_duplicate_methods(overall_method, overall_basis)
+        overall_method, overall_basis = remove_duplicate_methods(
+            overall_method, overall_basis
+        )
         _method = ",".join(overall_method)
         _basis = ",".join(overall_basis)
 
@@ -469,20 +488,18 @@ def read_log_parameters(
     else:
         overall_parameters["method"] = method
         overall_parameters["basis"] = ""
-    
+
     if freq == None:
         overall_parameters["freq"] = _freq
     else:
         overall_parameters["freq"] = freq
-    
+
     if hindrot == None:
         overall_parameters["hindrot"] = _hindrot
     else:
         overall_parameters["hindrot"] = hindrot
-        
 
     return overall_parameters
-
 
 
 if __name__ == "__main__":
@@ -499,9 +516,10 @@ if __name__ == "__main__":
     hindrot = parameters["hindrot"]
 
     print(parameters)
-    energy = read_log_energy(filename, 
+    energy = read_log_energy(
+        filename,
         method=method,
-        freq = freq,
-        anharm = anharm,
-        )
+        freq=freq,
+        anharm=anharm,
+    )
     print(energy)

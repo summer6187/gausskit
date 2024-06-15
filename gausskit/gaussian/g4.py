@@ -1,6 +1,7 @@
 """
 read G4 file, get energy
 """
+
 import sys
 from .log_parser import *
 

@@ -23,6 +23,7 @@ def config_section_map(config, section):
             dict1[option.lower()] = None
     return dict1
 
+
 def config_getboolean(config, section, option):
     section_map = config_section_map(config, section)
     if option.lower() in section_map:
@@ -30,6 +31,7 @@ def config_getboolean(config, section, option):
     else:
         _bool = False
     return _bool
+
 
 def match_method(item_method_list, method):
     matched_method = []
@@ -43,6 +45,7 @@ def match_method(item_method_list, method):
         print(f"No method matched for {method} in {item_method_list}!")
         print("Please check your database!")
     return matched_method
+
 
 def get_item_energy(item, PES_method_dict):
     Eele_method = PES_method_dict["Eele_method"]
@@ -66,7 +69,7 @@ def get_item_energy(item, PES_method_dict):
             pass
         else:
             ZPE_method = _method
-    
+
     ZPE_Mol = item[ZPE_method]
     # single atom have no ZPE
     if len(item[Eele_method].get_chemical_symbols()) == 1:
@@ -80,6 +83,7 @@ def get_item_energy(item, PES_method_dict):
     E_0K = Eele + ZPE
 
     return E_0K, ZPE_Mol
+
 
 def get_item_ts(item, PES_method_dict):
     ZPE_method = PES_method_dict["ZPE_method"]
@@ -97,8 +101,9 @@ def get_item_ts(item, PES_method_dict):
 
     return _ts
 
+
 def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
-    
+
     # init PES_data
     PES_data = {}
     # label for the dummy name of mols or TSs
@@ -132,12 +137,21 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
                 PES_item_dict[dummy_name]["Mol"] = ZPE_Mol
 
                 # add hindered rotor mols if possible
-                if any([item_method.endswith("hindrot") for item_method in database[item].keys()]):
-                    matched_methods = match_method(database[item].keys(), PES_methods["ZPE_method"]+"_hindrot")
+                if any(
+                    [
+                        item_method.endswith("hindrot")
+                        for item_method in database[item].keys()
+                    ]
+                ):
+                    matched_methods = match_method(
+                        database[item].keys(), PES_methods["ZPE_method"] + "_hindrot"
+                    )
                     hindrot_method = matched_methods[0]
-                    PES_item_dict[dummy_name]["Mol_hindrot"] = database[item][hindrot_method]
-                
-                PES_item_dict[dummy_name]["item_energy"] = E_0K * Hartree/(kcal/mol)
+                    PES_item_dict[dummy_name]["Mol_hindrot"] = database[item][
+                        hindrot_method
+                    ]
+
+                PES_item_dict[dummy_name]["item_energy"] = E_0K * Hartree / (kcal / mol)
                 item_ts = get_item_ts(database[item], PES_methods)
                 PES_item_dict[dummy_name]["ts"] = item_ts
                 if item_ts == True:
@@ -149,7 +163,7 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
         PES_data[str(PES_num)]["PES_items"] = PES_items
         PES_data[str(PES_num)]["final_ts"] = final_ts
         PES_energy = 0
-        for n,item in enumerate(PES_data[str(PES_num)]["PES_items"]):            
+        for n, item in enumerate(PES_data[str(PES_num)]["PES_items"]):
             if PES_data[str(PES_num)]["PES_items"][item]["plus_minus"] == "+":
                 PES_energy += PES_data[str(PES_num)]["PES_items"][item]["item_energy"]
             elif PES_data[str(PES_num)]["PES_items"][item]["plus_minus"] == "-":
@@ -157,9 +171,9 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
             else:
                 print(f"Warning! no plus_minus found for this item {item}")
                 exit()
-            
+
         PES_data[str(PES_num)]["PES_energy"] = PES_energy
-        
+
     # get reverse energy
     _reverse = False
     for n, PES_num in enumerate(PES_data):
@@ -168,12 +182,12 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
         PES_data[PES_num]["PES_energy"] -= PES_ref_energy
         if PES_data[PES_num]["final_ts"]:
             PES_data[PES_num]["reverse"] = 0
-            PES_data[PES_num]["reverse_ref"] = PES_num 
+            PES_data[PES_num]["reverse_ref"] = PES_num
             ts_energy = PES_data[PES_num]["PES_energy"]
             ts_n = PES_num
             _reverse = True
         elif _reverse:
-            PES_data[PES_num]["reverse"] = ts_energy-PES_data[PES_num]["PES_energy"]
+            PES_data[PES_num]["reverse"] = ts_energy - PES_data[PES_num]["PES_energy"]
             PES_data[PES_num]["reverse_ref"] = ts_n
         else:
             PES_data[PES_num]["reverse"] = 0
@@ -182,17 +196,21 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
         for PES_num in PES_data:
             item_string_list = []
             for PES_item in PES_data[PES_num]["PES_items"]:
-                item_string_list.append(PES_data[PES_num]["PES_items"][PES_item]["plus_minus"])
+                item_string_list.append(
+                    PES_data[PES_num]["PES_items"][PES_item]["plus_minus"]
+                )
                 dummy_name = PES_item
                 mol_name = PES_data[PES_num]["PES_items"][PES_item]["mol_name"]
                 item_string_list.append(f"{mol_name}({dummy_name})")
-            item_string = " ".join(item_string_list)[2:] # omit first "+ " sign
+            item_string = " ".join(item_string_list)[2:]  # omit first "+ " sign
             energy = PES_data[PES_num]["PES_energy"]
             reverse_energy = PES_data[PES_num]["reverse"]
             reverse_ref = PES_data[PES_num]["reverse_ref"]
 
-            print(f"  {PES_num:>2}. {item_string:45} {energy:>8.3f}  {reverse_energy:>8.3f}  (ref:{reverse_ref})")
-    
+            print(
+                f"  {PES_num:>2}. {item_string:45} {energy:>8.3f}  {reverse_energy:>8.3f}  (ref:{reverse_ref})"
+            )
+
     return PES_data
 
 
@@ -211,6 +229,7 @@ def thermo_method_warning(thermo_methods, PES_methods):
             print("Exiting program!")
             exit()
     return
+
 
 def PES_parser(config):
     # set PES Method
@@ -235,7 +254,9 @@ def PES_parser(config):
             for item in database_dict:
                 database[item] = {}
                 for method in database_dict[item]:
-                    database[item][method] = Molecules.from_dict(database_dict[item][method])
+                    database[item][method] = Molecules.from_dict(
+                        database_dict[item][method]
+                    )
 
     PES_methods = {
         "Eele_method": Eele_method,
@@ -259,7 +280,7 @@ def PES_parser(config):
             thermo_adj_barrier = []
         thermo_temp = Thermo_method["temp_k"]
         thermo_pressure = Thermo_method["pressure_atm"]
-        
+
         thermo_methods = {
             "thermo_tunneling": thermo_tunneling,
             "thermo_hinderedrotor": thermo_hinderedrotor,
@@ -269,7 +290,6 @@ def PES_parser(config):
             "thermo_pressure": thermo_pressure,
         }
         thermo_method_warning(thermo_methods, PES_methods)
-
 
     # set Multiwell Method
     calc_multiwell = False
@@ -290,10 +310,13 @@ def PES_parser(config):
             "multiwell_anharm": multiwell_anharm,
         }
 
-
     PES_datasets = {}
     # parse the rest sections
-    print("      {:45} {:>8}  {:>8}".format("reaction", "Fwd barr.", "bkw barr.(kcal/mol)"))
+    print(
+        "      {:45} {:>8}  {:>8}".format(
+            "reaction", "Fwd barr.", "bkw barr.(kcal/mol)"
+        )
+    )
     for section in config.sections():
         # parse one PES
         if section != "Method" and "PES" in section:
@@ -304,7 +327,9 @@ def PES_parser(config):
             PES_num_list = PES_dict.keys()
             PES_num_list = [int(num) for num in PES_num_list]
             PES_num_list.sort()
-            PES_data = get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=True)
+            PES_data = get_PES_data(
+                database, PES_dict, PES_num_list, PES_methods, verbose=True
+            )
             PES_datasets[section] = PES_data
 
     # thermo calc
@@ -336,4 +361,3 @@ if __name__ == "__main__":
     filename = args.file
     config.read(filename)
     PES_parser(config)
-

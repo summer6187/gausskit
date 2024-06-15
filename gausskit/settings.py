@@ -3,6 +3,7 @@ from jconfigparser.dict import DotDict
 
 from gausskit._defaults import DEFAULT_CONFIG_FILE
 
+
 def merge(source: dict, destination: dict, dict_type=dict):
     """
     run me with nosetests --with-doctest file.py
@@ -22,6 +23,7 @@ def merge(source: dict, destination: dict, dict_type=dict):
 
     return destination
 
+
 class Configuration(Config):
 
     def __init__(self, config_file: str = DEFAULT_CONFIG_FILE):
@@ -32,6 +34,7 @@ class Configuration(Config):
         """
 
         super().__init__(filenames=config_file)
+
 
 class Settings(Config):
     """Class to hold the settings parsed from settings.in (+ the configuration)"""
@@ -51,7 +54,7 @@ class Settings(Config):
 
         """
         # read config, then template, then user settings
-        
+
         _dct = DotDict()
 
         if not dct:
@@ -61,11 +64,10 @@ class Settings(Config):
                 dct = Config(settings_file)
 
         _dct = merge(dct, _dct, dict_type=DotDict)
-        
+
         if config_file is not None:
             _dct = Config(config_file)
 
         super().__init__()
         for key in _dct:
             self[key] = _dct[key]
-

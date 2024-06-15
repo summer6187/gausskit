@@ -4,6 +4,7 @@ import sys
 
 _re_freq = re.compile(r"-?[0-9]*\.[0-9]")
 
+
 def read_anharm_matrix(filename):
     """
     This function takes a gaussian log file with anharmonic analysis
@@ -137,6 +138,7 @@ def read_harm_freq(filename):
 
     return harm_freq_list_clean
 
+
 def read_harm_freq_another(filename):
     with open(filename) as f:
         found_harm_freq = False
@@ -226,7 +228,7 @@ def prepare_parsctst(filename_name, harm_freq, anharm_matrix, Egrain_line, barri
     # full_anharm_matrix = (
     #     anharm_matrix + anharm_matrix.T - np.diag(np.diag(anharm_matrix))
     # )
-    full_anharm_matrix = anharm_matrix # we already have full matrix
+    full_anharm_matrix = anharm_matrix  # we already have full matrix
     img_anharm_array = full_anharm_matrix[img_index]
     img_anharm_array = np.delete(img_anharm_array, img_index)
 
@@ -273,13 +275,14 @@ def prepare_parsctst(filename_name, harm_freq, anharm_matrix, Egrain_line, barri
 
     return input_list
 
+
 def prepare_bdens(filename_name, harm_freq, anharm_matrix, Egrain_line):
     input_list = []
     input_list.append(filename_name)
     input_list.append(f"At ??/?? level of theory")
     input_list.append(f"Anharmonicity from ??/?? level")
     input_list.append(" ")
-    
+
     input_list.append(f'{len(harm_freq)}, {0}, {0}, "We" ')
     input_list.append(" ")
     formated_lines = format_freq_matrix(harm_freq, anharm_matrix)
@@ -291,6 +294,7 @@ def prepare_bdens(filename_name, harm_freq, anharm_matrix, Egrain_line):
     input_list.append(f"'nochekstart'  {filename_name}.chk")
     input_list.append(" ")
     return input_list
+
 
 def main(filename):
     # default Egrain_line
@@ -314,9 +318,13 @@ def main(filename):
         ts_bool = True
 
     if ts_bool:  # prepare parsctst.dat
-        print(f"Found imagine frequency {harm_freq[ind_array][0]} cm-1, generateing parsctst.dat")
+        print(
+            f"Found imagine frequency {harm_freq[ind_array][0]} cm-1, generateing parsctst.dat"
+        )
         output = f"{filename_name}.parsctst.dat"
-        input_list = prepare_parsctst(filename_name, harm_freq, anharm_matrix, Egrain_line)
+        input_list = prepare_parsctst(
+            filename_name, harm_freq, anharm_matrix, Egrain_line
+        )
 
         print(f"<forward_barrier>  <backword_barrier> need specify in {output}")
 
@@ -324,7 +332,6 @@ def main(filename):
         output = f"{filename_name}.bdens.dat"
         print(f"Found No imagine frequencies, generateing {output}")
         input_list = prepare_bdens(filename_name, harm_freq, anharm_matrix, Egrain_line)
-
 
     with open(output, "w") as f:
         f.writelines([line + "\n" for line in input_list])

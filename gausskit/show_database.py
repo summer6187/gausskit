@@ -1,6 +1,7 @@
 import argparse
 import pickle
 
+
 def get_name_info(ds: dict, name: str):
     name_info_list = []
     for _method in ds[name].keys():
@@ -13,6 +14,7 @@ def get_name_info(ds: dict, name: str):
 
     return name_info_list
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("file", help="database file")
@@ -22,7 +24,6 @@ if __name__ == "__main__":
     # load database.pickle file
     with open(filename, "rb") as f:
         ds = pickle.load(f)
-
 
     for name in ds.keys():
         name_info = get_name_info(ds, name)

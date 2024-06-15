@@ -1,4 +1,5 @@
 """CLI for gausskit with click"""
+
 from pathlib import Path
 import os
 import pickle
@@ -11,16 +12,18 @@ from gausskit import __version__ as gausskit_version
 click_completion.init()
 complete_files = click.Path(exists=True)
 
+
 def finish_line():
-    click.echo("="*80)
+    click.echo("=" * 80)
     click.echo("Job done! Have a nice day!")
+
 
 @click.group()
 @click.version_option(gausskit_version, "-V", "--version")
 def cli():
     """gausskit: Transition state theory code. Interfacing Gaussian09/16 and Multiwell"""
     click.echo(f"Welcome to gausskit!\n")
-    click.echo("="*80)
+    click.echo("=" * 80)
 
 
 @cli.command()
@@ -28,6 +31,7 @@ def cli():
 @click.pass_obj
 def info(obj, file):
     from gausskit.database import get_name_info
+
     filename = Path(file).resolve()
     # load database.pickle file
     click.echo(f"Dataset summary for {filename}:")
@@ -48,7 +52,7 @@ def info(obj, file):
 @click.pass_obj
 def output(obj, directory, outfile, force):
     from gausskit.database import append_species, write_database
-    
+
     outfile = Path(outfile)
     if not force and outfile.exists():
         click.echo(f"Output file {outfile} exists!")
@@ -61,10 +65,9 @@ def output(obj, directory, outfile, force):
     database = {}
 
     logfile_list = []
-    for path_object in database_path.rglob('*'):
+    for path_object in database_path.rglob("*"):
         if path_object.is_file() and path_object.suffix == ".log":
             logfile_list.append(path_object)
-
 
     for logfile in logfile_list:
         filepath = logfile.resolve()
@@ -77,7 +80,7 @@ def output(obj, directory, outfile, force):
     if filetype == ".pickle":
         # write database in pickle binary file
         with open(outfile, "wb") as f:
-            pickle.dump(database,f)
+            pickle.dump(database, f)
     elif filetype == ".json":
         write_database(database, outfile)
 
@@ -92,11 +95,10 @@ def run(obj, file):
     from gausskit.potential_energy_surface import PES_parser
 
     config = configparser.ConfigParser()
-    
+
     filename = Path(file).resolve()
     click.echo(f"Run this PES: {filename}")
     config.read(filename)
     PES_parser(config)
 
     finish_line()
-

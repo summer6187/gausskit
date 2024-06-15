@@ -5,7 +5,11 @@ from ase import Atoms
 from ase.io.gaussian import read_gaussian_out
 from ase.symbols import symbols2numbers
 from gausskit.gaussian.log_parser import read_log_energy, read_log_parameters
-from gausskit.gaussian.anharm import read_harm_freq, read_anharm_matrix, read_harm_freq_another
+from gausskit.gaussian.anharm import (
+    read_harm_freq,
+    read_anharm_matrix,
+    read_harm_freq_another,
+)
 from gausskit.gaussian.hindrot import Hinderedrotor, read_hindrot
 
 
@@ -17,7 +21,7 @@ def method_parser(method):
     if "mp2" in method.lower():
         new_method = "MP2"
     return new_method
-    
+
 
 class Molecules(Atoms):
     """
@@ -53,7 +57,7 @@ class Molecules(Atoms):
         self._method = None
         self._basis = None
         self._ts = None
-        self._hinderedrotor = Hinderedrotor([],[],[],[],[],[],[])
+        self._hinderedrotor = Hinderedrotor([], [], [], [], [], [], [])
         self.logpath = None
 
     @property
@@ -62,8 +66,8 @@ class Molecules(Atoms):
         if self._electronic_energy == None:
             print("electronic energy (Eele) is not set")
         return self._electronic_energy
-    
-    @ electronic_energy.setter
+
+    @electronic_energy.setter
     def electronic_energy(self, energy):
         self._electronic_energy = energy
 
@@ -74,7 +78,7 @@ class Molecules(Atoms):
             print("zero point energy (ZPE) is not set")
         return self._zpe
 
-    @ zpe.setter
+    @zpe.setter
     def zpe(self, energy):
         self._zpe = energy
 
@@ -85,7 +89,7 @@ class Molecules(Atoms):
             print("anharmonic zero point energy is not set")
         return self._anharm_zpe
 
-    @ anharm_zpe.setter
+    @anharm_zpe.setter
     def anharm_zpe(self, energy):
         self._anharm_zpe = energy
 
@@ -95,8 +99,8 @@ class Molecules(Atoms):
         if type(self._anharm_X_matrix) == type(None):
             print("anharmonic X matrix is not set")
         return self._anharm_X_matrix
-    
-    @ anharm_matrix.setter
+
+    @anharm_matrix.setter
     def anharm_matrix(self, matrix):
         self._anharm_X_matrix = matrix
 
@@ -104,20 +108,20 @@ class Molecules(Atoms):
     def frequencies(self):
         """return vibrational frequencies"""
         return self._frequencies
-    
-    @ frequencies.setter
+
+    @frequencies.setter
     def frequencies(self, _frequencies):
         self._frequencies = _frequencies
-    
+
     @property
     def hinderedrotor(self):
         """return hindrot"""
         return self._hinderedrotor
-    
-    @ hinderedrotor.setter
+
+    @hinderedrotor.setter
     def hinderedrotor(self, _hinderedrotor):
         self._hinderedrotor = _hinderedrotor
-   
+
     @property
     def method(self):
         """return method, or functional"""
@@ -125,7 +129,7 @@ class Molecules(Atoms):
             print("method is not set")
         return self._method
 
-    @ method.setter
+    @method.setter
     def method(self, _method):
         self._method = _method
 
@@ -158,7 +162,6 @@ class Molecules(Atoms):
         else:
             print("No frequency (TS not possible.)")
 
-
     @property
     def ts(self):
         """return if calculation is transition state"""
@@ -168,7 +171,7 @@ class Molecules(Atoms):
 
     @classmethod
     def from_log(cls, filename):
-        
+
         parameters = read_log_parameters(filename)
         if parameters == None:
             return cls()
@@ -179,26 +182,27 @@ class Molecules(Atoms):
         method = parameters["method"]
         basis = parameters["basis"]
 
-        energy = read_log_energy(filename, 
+        energy = read_log_energy(
+            filename,
             method=method,
-            freq = freq,
-            anharm = anharm,
-            )
+            freq=freq,
+            anharm=anharm,
+        )
 
         with open(filename, "r", encoding="utf-8") as f:
             atoms = read_gaussian_out(f)
-        
+
         symbols = atoms.symbols
         numbers = atoms.numbers
         positions = atoms.positions
 
         new_mol = cls(
-            numbers = numbers,
-            positions = positions,
+            numbers=numbers,
+            positions=positions,
         )
 
         if energy == None:
-            return  new_mol
+            return new_mol
 
         # set energy
         new_mol.electronic_energy = energy["Eele"]
@@ -206,14 +210,14 @@ class Molecules(Atoms):
             new_mol.zpe = energy["ZPE"]
             _frequencies = read_harm_freq(filename)
             if _frequencies == []:
-                _frequencies  = read_harm_freq_another(filename)
+                _frequencies = read_harm_freq_another(filename)
             new_mol.frequencies = np.array(_frequencies)
             # set transition state from frequencies
             new_mol.set_ts()
             if anharm:
                 new_mol.anharm_zpe = energy["ZPE_anharm"]
                 new_mol.anharm_matrix = read_anharm_matrix(filename)
-        
+
         # set methods
         new_mol.method = method_parser(method)
 
@@ -249,22 +253,22 @@ class Molecules(Atoms):
         mol_dict["logpath"] = self.logpath
 
         return mol_dict
-    
+
     @classmethod
     def from_dict(cls, mol_dict):
         symbols = mol_dict["symbols"]
         numbers = symbols2numbers(symbols)
         positions = mol_dict["positions"]
         new_mol = cls(numbers=numbers, positions=positions)
-        new_mol._electronic_energy = mol_dict["electronic_energy"] 
-        new_mol._zpe = mol_dict["zpe"] 
-        new_mol._frequencies = mol_dict["frequencies"] 
-        new_mol._anharm_zpe = mol_dict["anharm_zpe"] 
-        new_mol._anharm_X_matrix = mol_dict["anharm_X_matrix"] 
-        new_mol._method = mol_dict["method"] 
-        new_mol._basis = mol_dict["basis"] 
-        new_mol._ts = mol_dict["ts"] 
+        new_mol._electronic_energy = mol_dict["electronic_energy"]
+        new_mol._zpe = mol_dict["zpe"]
+        new_mol._frequencies = mol_dict["frequencies"]
+        new_mol._anharm_zpe = mol_dict["anharm_zpe"]
+        new_mol._anharm_X_matrix = mol_dict["anharm_X_matrix"]
+        new_mol._method = mol_dict["method"]
+        new_mol._basis = mol_dict["basis"]
+        new_mol._ts = mol_dict["ts"]
         new_mol._hinderedrotor = Hinderedrotor.from_dict(mol_dict["hinderedrotor"])
-        new_mol.logpath = mol_dict["logpath"] 
-        
+        new_mol.logpath = mol_dict["logpath"]
+
         return new_mol

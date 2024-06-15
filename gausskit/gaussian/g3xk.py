@@ -3,6 +3,7 @@ read G3XK file, get energy
 ***WORNING***
 E_SO is not included in the calculation
 """
+
 import sys
 from .log_parser import *
 

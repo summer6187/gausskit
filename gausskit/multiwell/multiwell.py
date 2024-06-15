@@ -6,8 +6,15 @@ import subprocess
 from gausskit.multiwell.thermo import fix_crp_file
 from gausskit.gaussian.anharm import prepare_bdens, prepare_parsctst
 
-def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=True, Egrain_line="10	3000	4000	50000"):
-    
+
+def run_PES_multiwell(
+    PES_data,
+    multiwell_methods,
+    multiwell_path=None,
+    verbose=True,
+    Egrain_line="10	3000	4000	50000",
+):
+
     # Parse multiwell_methods information
     multiwell_wells = multiwell_methods["multiwell_wells"]
     multiwell_products = multiwell_methods["multiwell_products"]
@@ -16,7 +23,7 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
 
     # gather PES_info
     # item_list: Mol1, TS2, Mol3
-    item_list =  []
+    item_list = []
     # item_mol_name_list: HCFC133a, HCFC133a-OH_ts, Radical133a
     item_mol_name_list = []
     # item_Mol_list: 3 Molecules objects
@@ -31,11 +38,13 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
             item_Mol_list.append(Mol)
         if PES_data[PES_num]["final_ts"] == True:
             forwards_barrier = PES_data[PES_num]["PES_energy"]
-            reverse_PES_num = list(PES_data.keys())[n+1]
+            reverse_PES_num = list(PES_data.keys())[n + 1]
             backwards_barrier = PES_data[reverse_PES_num]["reverse"]
             for item in PES_data[PES_num]["PES_items"]:
                 if PES_data[PES_num]["PES_items"][item]["ts"] == True:
-                    sorted_freq = PES_data[PES_num]["PES_items"][item]["Mol"].frequencies.copy()
+                    sorted_freq = PES_data[PES_num]["PES_items"][item][
+                        "Mol"
+                    ].frequencies.copy()
                     sorted_freq.sort()
                     img_freq = sorted_freq[0]
                     if img_freq > 0:
@@ -59,22 +68,16 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
         pass
     else:
         densdata_path.mkdir()
-    
-    for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
+
+    for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
         mol = Mol
         dummy_logname = f"{dummy_name}.log"
-        shutil.copy(mol.logpath, densdata_path /dummy_logname)
+        shutil.copy(mol.logpath, densdata_path / dummy_logname)
 
     # 2. write gauss2multi.cfg
     g2m_filepath = densdata_path / "gauss2multi.cfg"
-    g2m_lines = ["KCAL", 
-                "1", 
-                "298",
-                "ATM", 
-                "1", 
-                "1", 
-                f"{Egrain_line}"]
-    for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
+    g2m_lines = ["KCAL", "1", "298", "ATM", "1", "1", f"{Egrain_line}"]
+    for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
         mol = Mol
         if mol.ts:
             mol_line = f"{n+1}   {dummy_name}.log     TS"
@@ -94,7 +97,7 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
     # 3.5 run bdens and/or parsctst if anharm
     # prepare bdens.dat or parsctst.dat
     if multiwell_anharm:
-        for n, (dummy_name, Mol) in enumerate(zip(item_list,item_Mol_list)):
+        for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
             mol = Mol
             if mol.ts:
                 # parsctst
@@ -103,7 +106,9 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
                 harm_freq = mol.frequencies
                 anharm_matrix = mol.anharm_matrix
                 barrier = [forwards_barrier, backwards_barrier]
-                input_list = prepare_parsctst(dummy_name,harm_freq,anharm_matrix,Egrain_line,barrier)
+                input_list = prepare_parsctst(
+                    dummy_name, harm_freq, anharm_matrix, Egrain_line, barrier
+                )
 
                 # write bdens.dat or parsctst.dat
                 output = densdata_path / output_datname
@@ -127,21 +132,21 @@ def run_PES_multiwell(PES_data, multiwell_methods, multiwell_path=None, verbose=
                 # bdens
                 pass
 
-            
     # 4. prepare multiwell input file multiwell.dat
 
-    reaction_lines = ["Gausskit generated. Be careful.", 
-                    f"{Egrain_line}     1832960486", # a random seed 
-                    "'ATM '  'KCAL'  'AMUA'",
-                    " 298   298      !   <-  translational and initial vibrational temperatures.",
-                    "1", # number of pressure
-                    "1", # pressure
-                    f"{len(multiwell_wells)}  {len(multiwell_products)}",
-                    ]
-    
+    reaction_lines = [
+        "Gausskit generated. Be careful.",
+        f"{Egrain_line}     1832960486",  # a random seed
+        "'ATM '  'KCAL'  'AMUA'",
+        " 298   298      !   <-  translational and initial vibrational temperatures.",
+        "1",  # number of pressure
+        "1",  # pressure
+        f"{len(multiwell_wells)}  {len(multiwell_products)}",
+    ]
+
     # formating well line
     n_channel = 1
-    well_line = f"{n_channel}    'WELL{n_channel}'     0.00 {n_channel}" 
+    well_line = f"{n_channel}    'WELL{n_channel}'     0.00 {n_channel}"
 
     # reaction_f = open(multiwell_path / "multiwell.dat", "w")
     return
