@@ -351,5 +351,5 @@ def run_PES_thermo(
     reaction_f.close()
 
     # 5. run thermo
-    command = f"cd {thermo_path}; " + config.machine.thermo_command
+    command = f"cd {thermo_path}; " + config.machine.thermo_command + " reaction.dat"
     subprocess.call(command, shell=True)
