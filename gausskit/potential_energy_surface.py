@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 import configparser
+import ast
 import pickle
 import json
 
@@ -298,15 +299,16 @@ def PES_parser(config):
         Multiwell_method = config_section_map(config, "Multiwell")
         multiwell_pes = list(Multiwell_method["multiwell_pes"].split())
         multiwell_dir = Multiwell_method["multiwell_dir"]
-        multiwell_wells = list(Multiwell_method["multiwell_wells"].split())
-        multiwell_products = list(Multiwell_method["multiwell_products"].split())
-        multiwell_tss = list(Multiwell_method["multiwell_tss"].split())
+        multiwell_wells = ast.literal_eval(Multiwell_method["multiwell_wells"]) # read a list
+        if type(multiwell_wells) is int:
+            # here we make sure this is a list object
+            multiwell_wells = [multiwell_wells]
+        multiwell_channels = ast.literal_eval(Multiwell_method["multiwell_channels"])
         multiwell_anharm = config_getboolean(config, "Multiwell", "anharm")
 
         multiwell_methods = {
             "multiwell_wells": multiwell_wells,
-            "multiwell_products": multiwell_products,
-            "multiwell_tss": multiwell_tss,
+            "multiwell_channels": multiwell_channels,
             "multiwell_anharm": multiwell_anharm,
         }
 
