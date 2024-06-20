@@ -8,6 +8,7 @@ import click
 import click_completion
 
 from gausskit import __version__ as gausskit_version
+from gausskit.molecules import Molecules
 
 click_completion.init()
 complete_files = click.Path(exists=True)
@@ -30,13 +31,26 @@ def cli():
 @click.argument("file", type=complete_files)
 @click.pass_obj
 def info(obj, file):
+    import json
     from gausskit.database import get_name_info
 
     filename = Path(file).resolve()
     # load database.pickle file
     click.echo(f"Dataset summary for {filename}:")
-    with open(filename, "rb") as f:
-        ds = pickle.load(f)
+    if filename.suffix == ".pickle":
+        with open(filename, "rb") as f:
+            ds = pickle.load(f)
+    elif filename.suffix == ".json":
+        with open(filename) as f:
+            database_dict = json.load(f)
+        database = {}
+        for item in database_dict:
+            database[item] = {}
+            for method in database_dict[item]:
+                database[item][method] = Molecules.from_dict(
+                    database_dict[item][method]
+                )
+        ds = database
 
     for name in ds.keys():
         name_info = get_name_info(ds, name)

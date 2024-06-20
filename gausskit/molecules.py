@@ -262,9 +262,9 @@ class Molecules(Atoms):
         new_mol = cls(numbers=numbers, positions=positions)
         new_mol._electronic_energy = mol_dict["electronic_energy"]
         new_mol._zpe = mol_dict["zpe"]
-        new_mol._frequencies = mol_dict["frequencies"]
+        new_mol._frequencies = np.asarray(mol_dict["frequencies"])
         new_mol._anharm_zpe = mol_dict["anharm_zpe"]
-        new_mol._anharm_X_matrix = mol_dict["anharm_X_matrix"]
+        new_mol._anharm_X_matrix = np.asarray(mol_dict["anharm_X_matrix"])
         new_mol._method = mol_dict["method"]
         new_mol._basis = mol_dict["basis"]
         new_mol._ts = mol_dict["ts"]
