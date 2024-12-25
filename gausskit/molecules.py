@@ -5,6 +5,7 @@ from ase import Atoms
 from ase.io.gaussian import read_gaussian_out
 from ase.symbols import symbols2numbers
 from gausskit.gaussian.log_parser import (
+    read_external_symmetry_number,
     read_charge_and_multiplicity,
     read_log_energy,
     read_log_parameters,
@@ -56,6 +57,7 @@ class Molecules(Atoms):
         self._charge = None
         self._multiplicity = None
         self._electronic_energy = None
+        self._external_symmetry_number = None
         self._zpe = None
         self._frequencies = np.array([])
         self._anharm_zpe = None
@@ -98,6 +100,17 @@ class Molecules(Atoms):
     @electronic_energy.setter
     def electronic_energy(self, energy):
         self._electronic_energy = energy
+
+    @property
+    def external_symmetry_number(self):
+        """return external_symmetry_number"""
+        if self._external_symmetry_number == None:
+            print("External Symmetry Number is not set")
+        return self._external_symmetry_number
+
+    @external_symmetry_number.setter
+    def external_symmetry_number(self, ESN):
+        self._external_symmetry_number = ESN
 
     @property
     def zpe(self):
@@ -237,6 +250,10 @@ class Molecules(Atoms):
         new_mol.charge = _charge
         new_mol.multiplicity = _mult
 
+        # set external symmetry number
+        ESN = read_external_symmetry_number(filename)
+        new_mol.external_symmetry_number = ESN
+
         # set energy
         new_mol.electronic_energy = energy["Eele"]
         if freq:
@@ -276,6 +293,7 @@ class Molecules(Atoms):
         # store other attributes
         mol_dict["charge"] = self._charge
         mol_dict["multiplicity"] = self._multiplicity
+        mol_dict["external_symmetry_number"] = self._external_symmetry_number
         mol_dict["electronic_energy"] = self._electronic_energy
         mol_dict["zpe"] = self._zpe
         mol_dict["frequencies"] = self._frequencies
@@ -298,6 +316,7 @@ class Molecules(Atoms):
         new_mol._charge = mol_dict["charge"]
         new_mol._multiplicity = mol_dict["multiplicity"]
         new_mol._electronic_energy = mol_dict["electronic_energy"]
+        new_mol._external_symmetry_number = mol_dict["external_symmetry_number"]
         new_mol._zpe = mol_dict["zpe"]
         new_mol._frequencies = np.asarray(mol_dict["frequencies"])
         new_mol._anharm_zpe = mol_dict["anharm_zpe"]

@@ -326,6 +326,7 @@ def remove_duplicate_methods(method_list, basis_list):
         new_b_list.append(mstring.split("/")[1])
 
     return new_m_list, new_b_list
+
 def read_charge_and_multiplicity(
     filename: str,
 ):
@@ -347,6 +348,25 @@ def read_charge_and_multiplicity(
                 print(f"Charge and Multiplicity not found in this file {filename}")
                 return None, None
 
+def read_external_symmetry_number(
+    filename: str,
+) -> int:
+    """
+    The read external symmetry number line in log file,
+    for example:
+        Rotational symmetry number  1.
+    """
+
+    with open(filename, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    for line in lines:
+        if "Rotational sy" in line or "ROTATIONAL SY" in line:
+            _line = line.split()
+            return int(float(_line[3]))
+
+    print(f"External symmetry number (Rotational symmetry number) not found in this file {filename}")
+    return 1
 
 def read_log_energy(
     filename: str,
