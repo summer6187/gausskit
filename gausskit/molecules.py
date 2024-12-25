@@ -4,7 +4,11 @@ import numpy as np
 from ase import Atoms
 from ase.io.gaussian import read_gaussian_out
 from ase.symbols import symbols2numbers
-from gausskit.gaussian.log_parser import read_log_energy, read_log_parameters
+from gausskit.gaussian.log_parser import (
+    read_charge_and_multiplicity,
+    read_log_energy,
+    read_log_parameters,
+)
 from gausskit.gaussian.anharm import (
     read_harm_freq,
     read_anharm_matrix,
@@ -49,6 +53,8 @@ class Molecules(Atoms):
         )
 
         # initialize some properties
+        self._charge = None
+        self._multiplicity = None
         self._electronic_energy = None
         self._zpe = None
         self._frequencies = np.array([])
@@ -59,6 +65,28 @@ class Molecules(Atoms):
         self._ts = None
         self._hinderedrotor = Hinderedrotor([], [], [], [], [], [], [])
         self.logpath = None
+
+    @property
+    def charge(self):
+        """return charge"""
+        if self._charge == None:
+            print("charge is not set")
+        return self._charge
+
+    @charge.setter
+    def charge(self, chg):
+        self._charge = chg
+
+    @property
+    def multiplicity(self):
+        """return multiplicity"""
+        if self._multiplicity == None:
+            print("multiplicity is not set")
+        return self._multiplicity
+
+    @multiplicity.setter
+    def multiplicity(self, mult):
+        self._multiplicity = mult
 
     @property
     def electronic_energy(self):
@@ -204,6 +232,11 @@ class Molecules(Atoms):
         if energy == None:
             return new_mol
 
+        # set charge and multiplicity
+        _charge, _mult = read_charge_and_multiplicity(filename)
+        new_mol.charge = _charge
+        new_mol.multiplicity = _mult
+
         # set energy
         new_mol.electronic_energy = energy["Eele"]
         if freq:
@@ -241,6 +274,8 @@ class Molecules(Atoms):
         mol_dict["symbols"] = self.get_chemical_symbols()
         mol_dict["positions"] = self.get_positions()
         # store other attributes
+        mol_dict["charge"] = self._charge
+        mol_dict["multiplicity"] = self._multiplicity
         mol_dict["electronic_energy"] = self._electronic_energy
         mol_dict["zpe"] = self._zpe
         mol_dict["frequencies"] = self._frequencies
@@ -260,6 +295,8 @@ class Molecules(Atoms):
         numbers = symbols2numbers(symbols)
         positions = mol_dict["positions"]
         new_mol = cls(numbers=numbers, positions=positions)
+        new_mol._charge = mol_dict["charge"]
+        new_mol._multiplicity = mol_dict["multiplicity"]
         new_mol._electronic_energy = mol_dict["electronic_energy"]
         new_mol._zpe = mol_dict["zpe"]
         new_mol._frequencies = np.asarray(mol_dict["frequencies"])

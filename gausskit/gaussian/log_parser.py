@@ -326,6 +326,26 @@ def remove_duplicate_methods(method_list, basis_list):
         new_b_list.append(mstring.split("/")[1])
 
     return new_m_list, new_b_list
+def read_charge_and_multiplicity(
+    filename: str,
+):
+    """
+    The read charge and multiplicity line in log file,
+    for example:
+        Charge =  0 Multiplicity = 1
+    """
+
+    with open(filename, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    for line in lines:
+        if "Charge" in line:
+            _line = line.split()
+            if _line[3] == "Multiplicity":
+                return int(_line[2]), int(_line[5])
+            else:
+                print(f"Charge and Multiplicity not found in this file {filename}")
+                return None, None
 
 
 def read_log_energy(
