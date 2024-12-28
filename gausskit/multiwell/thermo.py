@@ -3,7 +3,13 @@ import os
 import subprocess
 import shutil
 
-from gausskit.multiwell.mominert import run_mominert, write_mominert
+from gausskit.multiwell.mominert import (
+    run_mominert,
+    write_mominert,
+    read_mominert_out,
+    calc_rotor,
+)
+from gausskit.multiwell.densum import run_densum, write_densum
 from gausskit.gaussian.anharm import prepare_bdens, prepare_parsctst
 from gausskit.settings import Configuration
 
@@ -34,7 +40,7 @@ def run_PES_thermo(
     thermo_methods,
     thermo_path=None,
     verbose=True,
-    Egrain_line="10	3000	4000	50000",
+    Egrain_line="10   3000   4000   50000",
 ):
 
     # Parse thermo_methods information
@@ -122,10 +128,25 @@ def run_PES_thermo(
         mol = Mol
         datfile = f"{dummy_name}.coords"
         outfile = f"{dummy_name}.coords.out"
-        print(f"[Mominert]  Write {thermo_path / datfile}")
-        write_mominert(mol, thermo_path / datfile)
-        run_mominert(thermo_path / datfile, thermo_path / outfile)
-        print(f"[Mominert]  Write {thermo_path / outfile}")
+        write_mominert(mol, thermo_path / datfile, verbose=verbose)
+        run_mominert(thermo_path / datfile, thermo_path / outfile, verbose=verbose)
+        (Ix, Iy, Iz) = read_mominert_out(thermo_path / outfile, verbose=verbose)
+        krot, ad_rot = calc_rotor(Ix, Iy, Iz, verbose=verbose)
+
+        # densum stuff
+        datfile = f"{dummy_name}.vib"
+        outfile = f"{dummy_name}.dens"
+        write_densum(
+            mol,
+            krot,
+            ad_rot,
+            fname=dummy_name,
+            Egrain=Egrain_line,
+            datfile=thermo_path / datfile, 
+            verbose=verbose
+        )
+        run_densum(thermo_path / datfile, thermo_path / outfile, verbose=verbose)
+
 
     # 2. write gauss2multi.cfg
     g2m_filepath = _thermo_path / "gauss2multi.cfg"
