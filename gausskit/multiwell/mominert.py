@@ -39,7 +39,7 @@ def write_mominert(
     # lines.append("  ")
 
     if verbose:
-        print(f"{module:10} Write {datfile}")
+        print(f"{module:10} Write to {datfile}")
     with open(datfile, "w") as f:
         for line in lines:
             f.write(f"{line} {os.linesep}")
@@ -69,7 +69,7 @@ def run_mominert(
 
     # move the default output file to targeted outfile
     if verbose:
-        print(f"{module:10} Write {outfile}")
+        print(f"{module:10} Write to {outfile}")
     default_outfile.rename(outfile.absolute())
 
     return
@@ -88,8 +88,7 @@ def read_mominert_out(
             mominert_line = lines[n+1].split()
             (Ix, Iy, Iz) = [float(mominert_line[i]) for i in (2,5,8)]
             if verbose:
-                print(f"{module:10} Read reduced moment of inertia from {outfile} \
-                {Ix=:.5f} {Iy=:.5f} {Iz=:.5f}")
+                print(f"{module:10} Read reduced moment of inertia from {outfile}")
             return Ix, Iy, Iz
 
     print(f"{module:10} No reduced moment of inertia found from {outfile} !!!")
@@ -120,6 +119,6 @@ def calc_rotor(Ix, Iy, Iz, verbose:bool=False):
         ADrot = np.sqrt(Iy * Iz)
 
     if verbose:
-        print(f"{module:10} {Krot=:.6f} {ADrot=:.6f}")
+        print(f"{module:10} Calculate k-rotor and adiabatic rotors {Krot=:.4f} {ADrot=:.4f} (amu*ang^2)")
 
     return Krot, ADrot

@@ -232,7 +232,7 @@ def thermo_method_warning(thermo_methods, PES_methods):
     return
 
 
-def PES_parser(config):
+def PES_parser(config, verbose:bool=False):
     # set PES Method
     if "Method" not in config.sections():
         print("No Method section found!")
@@ -341,7 +341,7 @@ def PES_parser(config):
             PES_data = PES_datasets[_thermo_PES]
             thermo_path = Path(thermo_dir) / f"thermo_{_thermo_PES}"
             print("thermo calculation of", _thermo_PES)
-            run_PES_thermo(PES_data, thermo_methods, thermo_path, verbose=True)
+            run_PES_thermo(PES_data, thermo_methods, thermo_path, verbose=verbose)
 
     # multiwell calc
     if calc_multiwell:
@@ -350,7 +350,7 @@ def PES_parser(config):
             PES_data = PES_datasets[_multiwell_PES]
             multiwell_path = Path(multiwell_dir) / f"multiwell_{_multiwell_PES}"
             print("multiwell calculation of", _multiwell_PES)
-            run_PES_multiwell(PES_data, multiwell_methods, multiwell_path, verbose=True)
+            run_PES_multiwell(PES_data, multiwell_methods, multiwell_path, verbose=verbose)
 
 
 if __name__ == "__main__":

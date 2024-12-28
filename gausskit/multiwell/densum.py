@@ -43,28 +43,27 @@ def write_densum(
         degrees_of_freedom += 1
     lines.append(f"  {degrees_of_freedom}  0   HAR   AMUA")
     lines.append(str(Egrain))
+    rottype = "vib"
     for i in range(len(nonimg_freq)):
-        lines.append(f" {i+1:3d}  vib   {nonimg_freq[i]:12.4f}  0.0   1")
+        lines.append(f" {i+1:3d}   {rottype:6} {nonimg_freq[i]:12.4f}   0.0   1")
 
     rottype = "qrot " if (krot < 11.0) else "rot  "
     i = degrees_of_freedom
     if np.abs(krot) > 1e-12:
         lines.append(
-            f"{i:3d}  {rottype}   {krot:12.4f}      1.0    1      ! K-rotor"
+            f" {i:3d}   {rottype:6} {krot:12.4f}   1.0   1   ! K-rotor"
         )
-    else:
-        i -= 1
 
     rottype = "qrot " if (ad_rot < 11.0) else "rot  "
     if np.abs(ad_rot) > 1e-12:
         lines.append(
-            f"{i+1:3d}  {rottype}  {ad_rot:10.4f}     1.0    2      ! 2D adiabatic rotor"
+            f" {i+1:3d}   {rottype:6} {ad_rot:12.4f}   1.0   2   ! 2D adiabatic rotor"
         )
 
     lines.append("  ")
 
     if verbose:
-        print(f"{module:10} Write {datfile}")
+        print(f"{module:10} Write to {datfile}")
 
     with open(datfile, "w") as f:
         for line in lines:

@@ -103,8 +103,9 @@ def output(obj, directory, outfile, force):
 
 @cli.command()
 @click.argument("file", type=complete_files)
+@click.option("--verbose", is_flag=True, help="Show verbose information.")
 @click.pass_obj
-def run(obj, file):
+def run(obj, file, verbose):
     import configparser
     from gausskit.potential_energy_surface import PES_parser
 
@@ -113,6 +114,6 @@ def run(obj, file):
     filename = Path(file).resolve()
     click.echo(f"Run this PES: {filename}")
     config.read(filename)
-    PES_parser(config)
+    PES_parser(config, verbose=verbose)
 
     finish_line()
