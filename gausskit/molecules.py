@@ -66,6 +66,7 @@ class Molecules(Atoms):
         self._basis = None
         self._ts = None
         self._hinderedrotor = Hinderedrotor([], [], [], [], [], [], [])
+        self._name = None
         self.logpath = None
 
     @property
@@ -181,6 +182,17 @@ class Molecules(Atoms):
             print("basis sets are not set")
         return self._basis
 
+    @property
+    def name(self):
+        """return name"""
+        if self._name == None:
+            print("Name is not set")
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
+
     def set_ts(self):
         # set if TS from frequency check
         self._ts = None
@@ -237,48 +249,51 @@ class Molecules(Atoms):
         numbers = atoms.numbers
         positions = atoms.positions
 
-        new_mol = cls(
+        mol = cls(
             numbers=numbers,
             positions=positions,
         )
 
         if energy == None:
-            return new_mol
+            return mol
 
         # set charge and multiplicity
         _charge, _mult = read_charge_and_multiplicity(filename)
-        new_mol.charge = _charge
-        new_mol.multiplicity = _mult
+        mol.charge = _charge
+        mol.multiplicity = _mult
+
+        # sanity check
+        # check if the charge and multiplicity make sense? Do we really need this?
 
         # set external symmetry number
         ESN = read_external_symmetry_number(filename)
-        new_mol.external_symmetry_number = ESN
+        mol.external_symmetry_number = ESN
 
         # set energy
-        new_mol.electronic_energy = energy["Eele"]
+        mol.electronic_energy = energy["Eele"]
         if freq:
-            new_mol.zpe = energy["ZPE"]
+            mol.zpe = energy["ZPE"]
             _frequencies = read_harm_freq(filename)
             if _frequencies == []:
                 _frequencies = read_harm_freq_another(filename)
-            new_mol.frequencies = np.array(_frequencies)
+            mol.frequencies = np.array(_frequencies)
             # set transition state from frequencies
-            new_mol.set_ts()
+            mol.set_ts()
             if anharm:
-                new_mol.anharm_zpe = energy["ZPE_anharm"]
-                new_mol.anharm_matrix = read_anharm_matrix(filename)
+                mol.anharm_zpe = energy["ZPE_anharm"]
+                mol.anharm_matrix = read_anharm_matrix(filename)
 
         # set methods
-        new_mol.method = method_parser(method)
+        mol.method = method_parser(method)
 
         # set hindrotor
         if hindrot:
             hinderedrotor = read_hindrot(filename)
-            new_mol.hinderedrotor = hinderedrotor
+            mol.hinderedrotor = hinderedrotor
 
         # set log path
-        new_mol.set_filepath(filename)
-        return new_mol
+        mol.set_filepath(filename)
+        return mol
 
     def set_filepath(self, filepath):
         logpath = Path(filepath).resolve()
@@ -290,6 +305,7 @@ class Molecules(Atoms):
         # store Atoms object info
         mol_dict["symbols"] = self.get_chemical_symbols()
         mol_dict["positions"] = self.get_positions()
+        mol_dict["name"] = self.name
         # store other attributes
         mol_dict["charge"] = self._charge
         mol_dict["multiplicity"] = self._multiplicity
@@ -313,10 +329,11 @@ class Molecules(Atoms):
         numbers = symbols2numbers(symbols)
         positions = mol_dict["positions"]
         new_mol = cls(numbers=numbers, positions=positions)
-        new_mol._charge = mol_dict["charge"]
-        new_mol._multiplicity = mol_dict["multiplicity"]
+        new_mol.name = mol_dict.get("name")
+        new_mol._charge = mol_dict.get("charge")
+        new_mol._multiplicity = mol_dict.get("multiplicity")
         new_mol._electronic_energy = mol_dict["electronic_energy"]
-        new_mol._external_symmetry_number = mol_dict["external_symmetry_number"]
+        new_mol._external_symmetry_number = mol_dict.get("external_symmetry_number")
         new_mol._zpe = mol_dict["zpe"]
         new_mol._frequencies = np.asarray(mol_dict["frequencies"])
         new_mol._anharm_zpe = mol_dict["anharm_zpe"]

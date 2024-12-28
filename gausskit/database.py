@@ -24,12 +24,13 @@ def parse_species(filepath):
     return Molecules.from_log(filepath)
 
 
-def append_species(database, filepath: Path, method=None):
+def append_species(database: dict, filepath: Path, method=None):
     raw_name = filepath.stem
     simple_name = simplify_raw_name(raw_name)
-    new_mol = parse_species(filepath)
-    method = new_mol.method
-    if list(new_mol.hinderedrotor()) == []:
+    mol = parse_species(filepath)
+    mol.name = simple_name
+    method = mol.method
+    if list(mol.hinderedrotor()) == []:
         pass
     else:
         method += "_hindrot"
@@ -38,9 +39,9 @@ def append_species(database, filepath: Path, method=None):
         database[simple_name] = {}
 
     if method not in database[simple_name]:
-        database[simple_name][method] = new_mol
+        database[simple_name][method] = mol
     else:
-        database[simple_name][method] = new_mol
+        database[simple_name][method] = mol
 
     return database
 

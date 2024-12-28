@@ -3,6 +3,7 @@ import os
 import subprocess
 import shutil
 
+from gausskit.multiwell.mominert import run_mominert, write_mominert
 from gausskit.gaussian.anharm import prepare_bdens, prepare_parsctst
 from gausskit.settings import Configuration
 
@@ -93,7 +94,7 @@ def run_PES_thermo(
                     ]
 
     if thermo_path == None:
-        thermo_path = "testcases/thermo_test"
+        thermo_path = "thermo"
     thermo_path = Path(thermo_path)
     if verbose:
         print(item_mol_name_list)
@@ -104,13 +105,30 @@ def run_PES_thermo(
     else:
         thermo_path.mkdir()
 
+    # 2.0 old workflow using gauss2multi for testing
+    _thermo_path = Path(str(thermo_path) + "_gauss2multi")
+    if _thermo_path.exists():
+        pass
+    else:
+        _thermo_path.mkdir()
+
     for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
         mol = Mol
         dummy_logname = f"{dummy_name}.log"
-        shutil.copy(mol.logpath, thermo_path / dummy_logname)
+        shutil.copy(mol.logpath, _thermo_path / dummy_logname)
+
+    # 2.1 write and run mominert
+    for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
+        mol = Mol
+        datfile = f"{dummy_name}.coords"
+        outfile = f"{dummy_name}.coords.out"
+        print(f"[Mominert]  Write {thermo_path / datfile}")
+        write_mominert(mol, thermo_path / datfile)
+        run_mominert(thermo_path / datfile, thermo_path / outfile)
+        print(f"[Mominert]  Write {thermo_path / outfile}")
 
     # 2. write gauss2multi.cfg
-    g2m_filepath = thermo_path / "gauss2multi.cfg"
+    g2m_filepath = _thermo_path / "gauss2multi.cfg"
 
     g2m_lines = [
         "KCAL",
@@ -136,7 +154,7 @@ def run_PES_thermo(
         f.write(f"  {os.linesep}")
 
     # 3. run gauss2multi
-    command = f"cd {thermo_path}; echo N | " + config.machine.gauss2multi_command
+    command = f"cd {_thermo_path.absolute()}; echo N | " + config.machine.gauss2multi_command
     subprocess.run(command, shell=True, capture_output=True)
 
     # 3.5 run bdens and/or parsctst if anharm
@@ -165,10 +183,10 @@ def run_PES_thermo(
                 )
 
             # write bdens.dat or parsctst.dat
-            output = thermo_path / output_datname
+            output = _thermo_path / output_datname
             with open(output, "w") as f:
                 f.writelines([line + "\n" for line in input_list])
-            output = thermo_path / ".".join(output_datname.split(".")[1:])
+            output = _thermo_path / ".".join(output_datname.split(".")[1:])
             with open(output, "w") as f:
                 f.writelines([line + "\n" for line in input_list])
 
@@ -177,14 +195,14 @@ def run_PES_thermo(
             mol_name = item_mol_name_list[n]
             if mol.ts:
                 # run parsctst
-                command = f"cd {thermo_path}; " + config.machine.parsctst_command
+                command = f"cd {_thermo_path}; " + config.machine.parsctst_command
                 print(f"parsctst running for {mol_name}({dummy_name})")
                 subprocess.call(command, shell=True)
-                fix_crp_file(thermo_path / f"{dummy_name}.crp")
-                fix_crp_file(thermo_path / f"{dummy_name}.qcrp")
+                fix_crp_file(_thermo_path / f"{dummy_name}.crp")
+                fix_crp_file(_thermo_path / f"{dummy_name}.qcrp")
             else:
                 # run bdens
-                command = f"cd {thermo_path}; " + config.machine.bdens_command
+                command = f"cd {_thermo_path}; " + config.machine.bdens_command
                 print(f"bdens running for {mol_name}({dummy_name})")
                 subprocess.call(command, shell=True)
 
@@ -193,7 +211,7 @@ def run_PES_thermo(
     if thermo_hinderedrotor:
         hindrot_item_reduced_mominert_dict = {}
         for item in hindrot_item_Mol_dict:
-            filename = thermo_path / f"{item}.coords"
+            filename = _thermo_path / f"{item}.coords"
             with open(filename, "r") as f:
                 lines = f.readlines()
             mol_hindrot = hindrot_item_Mol_dict[item].hinderedrotor
@@ -228,14 +246,14 @@ def run_PES_thermo(
 
             # run mominert
             command = (
-                f"cd {thermo_path}; "
+                f"cd {_thermo_path}; "
                 + config.machine.mominert_command
                 + " {item}.coords"
             )
             subprocess.call(command, shell=True)
 
             # read moment of inertia from .co.out files
-            filename = thermo_path / "{item}.co.out"
+            filename = _thermo_path / "{item}.co.out"
             with open(filename, "r") as f:
                 lines = f.readlines()
             mominert_lines = [
@@ -248,7 +266,7 @@ def run_PES_thermo(
             hindrot_item_reduced_mominert_dict[item] = reduced_moment_of_inertia
 
     # 4. prepare thermo input file reaction.dat
-    reaction_f = open(thermo_path / "reaction.dat", "w")
+    reaction_f = open(_thermo_path / "reaction.dat", "w")
 
     reaction_lines = [
         "KCAL   MCC",
@@ -262,7 +280,7 @@ def run_PES_thermo(
         mol = Mol
         dummy_thermname = f"{dummy_name}.therm"
 
-        with open(thermo_path / dummy_thermname) as f:
+        with open(_thermo_path / dummy_thermname) as f:
             mol_lines = f.readlines()
             if mol.ts:
                 # if no tunneling, set img_freq and backwards_barrier to 0
@@ -351,5 +369,5 @@ def run_PES_thermo(
     reaction_f.close()
 
     # 5. run thermo
-    command = f"cd {thermo_path}; " + config.machine.thermo_command + " reaction.dat"
+    command = f"cd {_thermo_path}; " + config.machine.thermo_command + " reaction.dat"
     subprocess.call(command, shell=True)
