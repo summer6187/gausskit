@@ -6,8 +6,13 @@ import pickle
 
 import click
 import click_completion
+import configparser
+import json
 
 from gausskit import __version__ as gausskit_version
+from gausskit.database import get_name_info
+from gausskit.database import append_species, write_database
+from gausskit.potential_energy_surface import PES_parser
 from gausskit.molecules import Molecules
 
 click_completion.init()
@@ -31,9 +36,6 @@ def cli():
 @click.argument("file", type=complete_files)
 @click.pass_obj
 def info(obj, file):
-    import json
-    from gausskit.database import get_name_info
-
     filename = Path(file).resolve()
     # load database.pickle file
     click.echo(f"Dataset summary for {filename}:")
@@ -65,8 +67,6 @@ def info(obj, file):
 @click.option("--force", is_flag=True, help="enfore parsing of output file")
 @click.pass_obj
 def output(obj, directory, outfile, force):
-    from gausskit.database import append_species, write_database
-
     outfile = Path(outfile)
     if not force and outfile.exists():
         click.echo(f"Output file {outfile} exists!")
@@ -106,9 +106,6 @@ def output(obj, directory, outfile, force):
 @click.option("--verbose", is_flag=True, help="Show verbose information.")
 @click.pass_obj
 def run(obj, file, verbose):
-    import configparser
-    from gausskit.potential_energy_surface import PES_parser
-
     config = configparser.ConfigParser()
 
     filename = Path(file).resolve()

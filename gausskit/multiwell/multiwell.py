@@ -3,8 +3,8 @@ import os
 import shutil
 import subprocess
 
-from gausskit.multiwell.thermo import fix_crp_file
-from gausskit.gaussian.anharm import prepare_bdens, prepare_parsctst
+from gausskit.multiwell.workflow import fix_crp_file
+from gausskit.multiwell.sctst import write_bdens, write_parsctst
 from gausskit.settings import Configuration
 from gausskit._defaults import colliders, trail_line
 
@@ -98,54 +98,54 @@ def run_PES_multiwell(
     command = f"cd {densdata_path}; echo N | " + config.machine.gauss2multi_command
     subprocess.run(command, shell=True, capture_output=True)
 
-    # 3.5 run bdens and/or parsctst if anharm
-    # prepare bdens.dat or parsctst.dat
-    # we only have one parsctst mission, so only one set of forw. backw. barrier
-    if multiwell_anharm:
-        for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
-            mol = Mol
-            if mol.ts:
-                # parsctst
-                output_datname = f"{dummy_name}.parsctst.dat"
-                harm_freq = mol.frequencies
-                anharm_matrix = mol.anharm_matrix
-                barrier = [forwards_barrier, backwards_barrier]
-                input_list = prepare_parsctst(
-                    dummy_name, harm_freq, anharm_matrix, Egrain_line, barrier
-                )
-
-            else:
-                # bdens
-                output_datname = f"{dummy_name}.bdens.dat"
-                harm_freq = mol.frequencies
-                anharm_matrix = mol.anharm_matrix
-                input_list = prepare_bdens(
-                    dummy_name, harm_freq, anharm_matrix, Egrain_line
-                )
-
-            # write bdens.dat or parsctst.dat
-            output = densdata_path / output_datname
-            with open(output, "w") as f:
-                f.writelines([line + "\n" for line in input_list])
-            output = densdata_path / ".".join(output_datname.split(".")[1:])
-            with open(output, "w") as f:
-                f.writelines([line + "\n" for line in input_list])
-
-            # run bdens or parsctst
-            print("-----------------anharmonic-----------------")
-            mol_name = item_mol_name_list[n]
-            if mol.ts:
-                # run parsctst
-                command = f"cd {densdata_path}; " + config.machine.parsctst_command
-                print(f"parsctst running for {mol_name}({dummy_name})")
-                subprocess.call(command, shell=True)
-                fix_crp_file(densdata_path / f"{dummy_name}.crp")
-                fix_crp_file(densdata_path / f"{dummy_name}.qcrp")
-            else:
-                # run bdens
-                command = f"cd {densdata_path}; " + config.machine.bdens_command
-                print(f"bdens running for {mol_name}({dummy_name})")
-                subprocess.call(command, shell=True)
+    # # 3.5 run bdens and/or parsctst if anharm
+    # # prepare bdens.dat or parsctst.dat
+    # # we only have one parsctst mission, so only one set of forw. backw. barrier
+    # if multiwell_anharm:
+    #     for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
+    #         mol = Mol
+    #         if mol.ts:
+    #             # parsctst
+    #             output_datname = f"{dummy_name}.parsctst.dat"
+    #             harm_freq = mol.frequencies
+    #             anharm_matrix = mol.anharm_matrix
+    #             barrier = [forwards_barrier, backwards_barrier]
+    #             input_list = prepare_parsctst(
+    #                 dummy_name, harm_freq, anharm_matrix, Egrain_line, barrier
+    #             )
+    #
+    #         else:
+    #             # bdens
+    #             output_datname = f"{dummy_name}.bdens.dat"
+    #             harm_freq = mol.frequencies
+    #             anharm_matrix = mol.anharm_matrix
+    #             input_list = prepare_bdens(
+    #                 dummy_name, harm_freq, anharm_matrix, Egrain_line
+    #             )
+    #
+    #         # write bdens.dat or parsctst.dat
+    #         output = densdata_path / output_datname
+    #         with open(output, "w") as f:
+    #             f.writelines([line + "\n" for line in input_list])
+    #         output = densdata_path / ".".join(output_datname.split(".")[1:])
+    #         with open(output, "w") as f:
+    #             f.writelines([line + "\n" for line in input_list])
+    #
+    #         # run bdens or parsctst
+    #         print("-----------------anharmonic-----------------")
+    #         mol_name = item_mol_name_list[n]
+    #         if mol.ts:
+    #             # run parsctst
+    #             command = f"cd {densdata_path}; " + config.machine.parsctst_command
+    #             print(f"parsctst running for {mol_name}({dummy_name})")
+    #             subprocess.call(command, shell=True)
+    #             fix_crp_file(densdata_path / f"{dummy_name}.crp")
+    #             fix_crp_file(densdata_path / f"{dummy_name}.qcrp")
+    #         else:
+    #             # run bdens
+    #             command = f"cd {densdata_path}; " + config.machine.bdens_command
+    #             print(f"bdens running for {mol_name}({dummy_name})")
+    #             subprocess.call(command, shell=True)
 
     # 4. prepare multiwell input file multiwell.dat
 

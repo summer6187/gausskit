@@ -12,6 +12,41 @@ config = Configuration()
 
 module = "[Densum]"
 
+def get_degrees_of_freedom_lines(
+    mol:Molecules,
+    krot:float,
+    ad_rot:float,
+):
+    # get all non imaginary frequencies
+    freq = mol.frequencies
+    nonimg_freq = freq[freq>0]
+
+    # degrees of freedom
+    degrees_of_freedom = len(nonimg_freq)
+
+    lines = []
+
+    rottype = "vib"
+    # indexing from 1
+    for i in range(1, len(nonimg_freq)+1):
+        lines.append(f" {i:3d}   {rottype:6} {nonimg_freq[i-1]:12.4f}   0.0   1")
+
+    rottype = "qrot " if (krot < 11.0) else "rot  "
+    if np.abs(krot) > 1e-12:
+        i += 1
+        lines.append(
+            f" {i:3d}   {rottype:6} {krot:12.4f}   1.0   1   ! K-rotor"
+        )
+
+    rottype = "qrot " if (ad_rot < 11.0) else "rot  "
+    if np.abs(ad_rot) > 1e-12:
+        i += 1
+        lines.append(
+            f" {i:3d}   {rottype:6} {ad_rot:12.4f}   1.0   2   ! 2D adiabatic rotor"
+        )
+    return lines
+
+
 def write_densum(
     mol:Molecules,
     krot:float,
@@ -43,22 +78,11 @@ def write_densum(
         degrees_of_freedom += 1
     lines.append(f"  {degrees_of_freedom}  0   HAR   AMUA")
     lines.append(str(Egrain))
-    rottype = "vib"
-    for i in range(len(nonimg_freq)):
-        lines.append(f" {i+1:3d}   {rottype:6} {nonimg_freq[i]:12.4f}   0.0   1")
 
-    rottype = "qrot " if (krot < 11.0) else "rot  "
-    i = degrees_of_freedom
-    if np.abs(krot) > 1e-12:
-        lines.append(
-            f" {i:3d}   {rottype:6} {krot:12.4f}   1.0   1   ! K-rotor"
-        )
-
-    rottype = "qrot " if (ad_rot < 11.0) else "rot  "
-    if np.abs(ad_rot) > 1e-12:
-        lines.append(
-            f" {i+1:3d}   {rottype:6} {ad_rot:12.4f}   1.0   2   ! 2D adiabatic rotor"
-        )
+    dof_lines = get_degrees_of_freedom_lines(
+        mol, krot, ad_rot
+    )
+    lines += dof_lines
 
     lines.append("  ")
 

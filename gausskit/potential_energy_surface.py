@@ -6,7 +6,7 @@ import pickle
 import json
 
 from ase.units import Hartree, kcal, mol
-from gausskit.multiwell.thermo import run_PES_thermo
+from gausskit.multiwell.workflow import run_PES_thermo
 from gausskit.multiwell.multiwell import run_PES_multiwell
 from gausskit.molecules import Molecules
 

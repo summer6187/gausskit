@@ -74,6 +74,7 @@ def run_mominert(
 
     return
 
+
 def read_mominert_out(
     outfile:Path = Path("mominert.out"),
     verbose:bool = False,
@@ -122,3 +123,12 @@ def calc_rotor(Ix, Iy, Iz, verbose:bool=False):
         print(f"{module:10} Calculate k-rotor and adiabatic rotors {Krot=:.4f} {ADrot=:.4f} (amu*ang^2)")
 
     return Krot, ADrot
+
+def get_rotor(
+    outfile:Path = Path("mominert.out"),
+    verbose:bool = False,
+):
+    Ix, Iy, Iz = read_mominert_out(outfile, verbose)
+    Krot, ADrot = calc_rotor(Ix, Iy, Iz, verbose)
+    return Krot, ADrot
+
