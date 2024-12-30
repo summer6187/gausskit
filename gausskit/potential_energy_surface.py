@@ -6,8 +6,7 @@ import pickle
 import json
 
 from ase.units import Hartree, kcal, mol
-from gausskit.multiwell.workflow import run_PES_thermo
-from gausskit.multiwell.multiwell import run_PES_multiwell
+from gausskit.multiwell.workflow import run_thermo_workflow, run_multiwell_workflow
 from gausskit.molecules import Molecules
 
 
@@ -341,7 +340,7 @@ def PES_parser(config, verbose:bool=False):
             PES_data = PES_datasets[_thermo_PES]
             thermo_path = Path(thermo_dir) / f"thermo_{_thermo_PES}"
             print("thermo calculation of", _thermo_PES)
-            run_PES_thermo(PES_data, thermo_methods, thermo_path, verbose=verbose)
+            run_thermo_workflow(PES_data, thermo_methods, thermo_path, verbose=verbose)
 
     # multiwell calc
     if calc_multiwell:
@@ -350,7 +349,7 @@ def PES_parser(config, verbose:bool=False):
             PES_data = PES_datasets[_multiwell_PES]
             multiwell_path = Path(multiwell_dir) / f"multiwell_{_multiwell_PES}"
             print("multiwell calculation of", _multiwell_PES)
-            run_PES_multiwell(PES_data, multiwell_methods, multiwell_path, verbose=verbose)
+            run_multiwell_workflow(PES_data, multiwell_methods, multiwell_path, verbose=verbose)
 
 
 if __name__ == "__main__":

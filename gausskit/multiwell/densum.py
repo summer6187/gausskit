@@ -103,6 +103,7 @@ def run_densum(
 ):
     cwd = datfile.parent.absolute()
 
+    # We do this because densum program only read densum.dat file
     if datfile.name != "densum.dat":
         default_datfile = cwd / "densum.dat"
         default_datfile.write_text(datfile.read_text())
@@ -120,6 +121,7 @@ def run_densum(
     assert default_outfile.exists(), f"{default_outfile} doesn't exists!"
 
     # move the default output file to targeted outfile
+    # This is not needed, fname line in densum.dat will determine the output filename fname.dens
     # default_outfile.rename(outfile.absolute())
 
     return

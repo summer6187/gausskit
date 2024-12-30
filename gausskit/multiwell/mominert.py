@@ -6,6 +6,7 @@ import subprocess
 import numpy as np
 
 from gausskit.molecules import Molecules
+from gausskit.gaussian.hindrot import Hinderedrotor
 from gausskit.settings import Configuration
 
 config = Configuration()
@@ -14,6 +15,7 @@ module = "[Mominert]"
 
 def write_mominert(
     mol:Molecules,
+    hinderedrotor:Hinderedrotor = None,
     datfile:Path = Path("mominert.dat"),
     verbose:bool = False,
 ):
@@ -30,6 +32,30 @@ def write_mominert(
         line += "   ".join([f"{p:8f}" for p in pos])
         lines.append(line)
 
+    if hinderedrotor is not None:
+        # internal rotor coords information
+        hindrot_lines = [""]
+        for i_rotor in range(len(hinderedrotor._rotating_bonds)):
+            hindrot_lines.append(
+                ", ".join(
+                    [str(j + 1) for j in hinderedrotor._rotating_bonds[i_rotor]]
+                )
+            )
+            hindrot_lines.append(
+                str(len(hinderedrotor._rotating_groups[i_rotor]))
+            )
+            hindrot_lines.append(
+                ", ".join(
+                    [str(j + 1) for j in hinderedrotor._rotating_groups[i_rotor]]
+                )
+            )
+            hindrot_lines.append("")
+        hindrot_lines = [j + "\n" for j in internal_rotor_coords]
+
+        # insert rotor coords information to the file
+        lines += hindrot_lines
+
+    # this is finishing lines
     lines.append("  0 , 0")
     lines.append("  ")
 
@@ -46,6 +72,7 @@ def write_mominert(
         f.write(f"  {os.linesep}")
 
     return
+
 
 def run_mominert(
     datfile:Path = Path("mominert.dat"),
@@ -81,19 +108,21 @@ def read_mominert_out(
 ):
     with open(outfile, "r") as f:
         lines = f.readlines()
-
+    reduced_moment_of_inertia = []
     for n, line in enumerate(lines):
-        if "  REDUC" in line:
+        if "REDUCED MOMENT OF INERTIA" in line:
             print(f"{module:10} WARNING: Reduced moment of inertia will NOT be automatically added to .vibs file!")
+            reduced_moment_of_inertia.append(float(line.split(":")[1].split()[0]))
+
         if "PRINCIP" in line:
             mominert_line = lines[n+1].split()
             (Ix, Iy, Iz) = [float(mominert_line[i]) for i in (2,5,8)]
             if verbose:
                 print(f"{module:10} Read reduced moment of inertia from {outfile}")
-            return Ix, Iy, Iz
+            return Ix, Iy, Iz, reduced_moment_of_inertia
 
     print(f"{module:10} No reduced moment of inertia found from {outfile} !!!")
-    return None, None, None
+    return None, None, None, reduced_moment_of_inertia
 
 def calc_rotor(Ix, Iy, Iz, verbose:bool=False):
     """
@@ -128,7 +157,7 @@ def get_rotor(
     outfile:Path = Path("mominert.out"),
     verbose:bool = False,
 ):
-    Ix, Iy, Iz = read_mominert_out(outfile, verbose)
+    Ix, Iy, Iz, _ = read_mominert_out(outfile, verbose)
     Krot, ADrot = calc_rotor(Ix, Iy, Iz, verbose)
     return Krot, ADrot
 

@@ -56,15 +56,6 @@ def write_thermo(
             forwards_barrier = PES_data[PES_num]["PES_energy"]
             reverse_PES_num = list(PES_data.keys())[n + 1]
             backwards_barrier = PES_data[reverse_PES_num]["reverse"]
-            for item in PES_data[PES_num]["PES_items"]:
-                if PES_data[PES_num]["PES_items"][item]["ts"] == True:
-                    sorted_freq = PES_data[PES_num]["PES_items"][item][
-                        "Mol"
-                    ].frequencies.copy()
-                    sorted_freq.sort()
-                    img_freq = sorted_freq[0]
-                    if img_freq > 0:
-                        print(f"Warning! Positive img_freq found {img_freq}")
             break
 
     # prepare hindered rot calculations
@@ -188,11 +179,12 @@ def write_thermo(
         f.write(f"  {os.linesep}")
 
 def run_thermo(
-    thermo_path:Path,
-    datfile:Path = Path("mominert.dat"),
+    datfile:Path = Path("thermo.dat"),
     verbose:bool = False,
 ):
-    command = f"cd {thermo_path}; " + config.machine.thermo_command + f" {datfile.name}"
+    cwd = datfile.parent.absolute()
+
+    command = f"cd {cwd}; " + config.machine.thermo_command + f" {datfile.name}"
     if verbose:
         print(f"{module:10} Run command: {command}")
     subprocess.call(command, shell=True)

@@ -10,15 +10,18 @@ from gausskit._defaults import colliders, trail_line
 
 config = Configuration()
 
-def run_PES_multiwell(
+module = "[Thermo]"
+
+def write_multiwell(
     PES_data,
     multiwell_methods,
-    multiwell_path=None,
+    multiwell_path:Path,
+    hindrot_item_reduced_mominert_dict,
     collider="N2",
-    verbose=True,
-    Egrain_line="10	3000	4000	50000",
+    Egrain="10	3000	4000	50000",
+    datfile:Path = Path("densum.dat"),
+    verbose:bool = False,
 ):
-
     # Parse multiwell_methods information
     multiwell_wells = multiwell_methods["multiwell_wells"]
     multiwell_channels = multiwell_methods["multiwell_channels"]
@@ -58,100 +61,9 @@ def run_PES_multiwell(
             backwards_barrier = 0
         barrier_list.append([forwards_barrier, backwards_barrier])
 
-    # 1. prepare log files
-    multiwell_path = Path(multiwell_path)
-    if multiwell_path.exists():
-        pass
-    else:
-        multiwell_path.mkdir(parents=True)
-
-    # prepare DensData dir
-    densdata_path = multiwell_path / "DensData"
-    if densdata_path.exists():
-        pass
-    else:
-        densdata_path.mkdir()
-
-    for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
-        mol = Mol
-        dummy_logname = f"{dummy_name}.log"
-        shutil.copy(mol.logpath, densdata_path / dummy_logname)
-
-    # 2. write gauss2multi.cfg
-    g2m_filepath = densdata_path / "gauss2multi.cfg"
-    g2m_lines = ["KCAL", "1", "298", "ATM", "1", "1", f"{Egrain_line}"]
-    for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
-        mol = Mol
-        if mol.ts:
-            mol_line = f"{n+1}   {dummy_name}.log     TS"
-        else:
-            mol_line = f"{n+1}   {dummy_name}.log   WELL"
-        g2m_lines.append(mol_line)
-
-    with open(g2m_filepath, "w") as f:
-        for line in g2m_lines:
-            f.write(f"{line} {os.linesep}")
-        f.write(f"  {os.linesep}")
-
-    # 3. run gauss2multi
-    # run gauss2multi needs an input N to choose not to overwrite gauss2multi.cfg file
-    command = f"cd {densdata_path}; echo N | " + config.machine.gauss2multi_command
-    subprocess.run(command, shell=True, capture_output=True)
-
-    # # 3.5 run bdens and/or parsctst if anharm
-    # # prepare bdens.dat or parsctst.dat
-    # # we only have one parsctst mission, so only one set of forw. backw. barrier
-    # if multiwell_anharm:
-    #     for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
-    #         mol = Mol
-    #         if mol.ts:
-    #             # parsctst
-    #             output_datname = f"{dummy_name}.parsctst.dat"
-    #             harm_freq = mol.frequencies
-    #             anharm_matrix = mol.anharm_matrix
-    #             barrier = [forwards_barrier, backwards_barrier]
-    #             input_list = prepare_parsctst(
-    #                 dummy_name, harm_freq, anharm_matrix, Egrain_line, barrier
-    #             )
-    #
-    #         else:
-    #             # bdens
-    #             output_datname = f"{dummy_name}.bdens.dat"
-    #             harm_freq = mol.frequencies
-    #             anharm_matrix = mol.anharm_matrix
-    #             input_list = prepare_bdens(
-    #                 dummy_name, harm_freq, anharm_matrix, Egrain_line
-    #             )
-    #
-    #         # write bdens.dat or parsctst.dat
-    #         output = densdata_path / output_datname
-    #         with open(output, "w") as f:
-    #             f.writelines([line + "\n" for line in input_list])
-    #         output = densdata_path / ".".join(output_datname.split(".")[1:])
-    #         with open(output, "w") as f:
-    #             f.writelines([line + "\n" for line in input_list])
-    #
-    #         # run bdens or parsctst
-    #         print("-----------------anharmonic-----------------")
-    #         mol_name = item_mol_name_list[n]
-    #         if mol.ts:
-    #             # run parsctst
-    #             command = f"cd {densdata_path}; " + config.machine.parsctst_command
-    #             print(f"parsctst running for {mol_name}({dummy_name})")
-    #             subprocess.call(command, shell=True)
-    #             fix_crp_file(densdata_path / f"{dummy_name}.crp")
-    #             fix_crp_file(densdata_path / f"{dummy_name}.qcrp")
-    #         else:
-    #             # run bdens
-    #             command = f"cd {densdata_path}; " + config.machine.bdens_command
-    #             print(f"bdens running for {mol_name}({dummy_name})")
-    #             subprocess.call(command, shell=True)
-
-    # 4. prepare multiwell input file multiwell.dat
-
     reaction_lines = [
         "Gausskit generated. Be careful.",
-        f"{Egrain_line}     1832960486",  # a random seed
+        f"{Egrain}     1832960486",  # a random seed
         "\n",
         "'ATM'  'KCAL'  'AMUA'",
         "\n",
@@ -219,7 +131,14 @@ def run_PES_multiwell(
     reaction_f.close()
 
 
-    # 5. run multiwell
-    command = f"cd {multiwell_path}; " + config.machine.thermo_command + " multiwell.dat"
+def run_multiwell(
+    datfile:Path = Path("multiwell.dat"),
+    verbose:bool = False,
+):
+    cwd = datfile.parent.absolute()
+
+    command = f"cd {cwd}; " + config.machine.multiwell_command + f" {datfile.name}"
+    if verbose:
+        print(f"{module:10} Run command: {command}")
     subprocess.call(command, shell=True)
     return
