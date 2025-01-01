@@ -350,6 +350,7 @@ def read_charge_and_multiplicity(
 
 def read_external_symmetry_number(
     filename: str,
+    n_atoms,
 ) -> int:
     """
     The read external symmetry number line in log file,
@@ -364,6 +365,9 @@ def read_external_symmetry_number(
         if "Rotational sy" in line or "ROTATIONAL SY" in line:
             _line = line.split()
             return int(float(_line[3]))
+
+    if n_atoms <= 1:
+        return 1
 
     print(f"External symmetry number (Rotational symmetry number) not found in this file {filename}")
     return 1

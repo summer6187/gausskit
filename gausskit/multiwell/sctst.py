@@ -92,7 +92,7 @@ def write_parsctst(
 
     # write file
     if verbose:
-        print(f"{module.p:10} Writing to {datfile}")
+        print(f"{module.p:11} Writing to {datfile}")
     with open(datfile, "w") as f:
         f.writelines([line + "\n" for line in lines])
 
@@ -127,7 +127,7 @@ def write_bdens(
 
     # write file
     if verbose:
-        print(f"{module.p:10} Writing to {datfile}")
+        print(f"{module.p:11} Writing to {datfile}")
     with open(datfile, "w") as f:
         f.writelines([line + "\n" for line in lines])
 
@@ -145,12 +145,12 @@ def run_parsctst(
     if datfile.name != _default_datfile:
         default_datfile = cwd / _default_datfile
         if verbose:
-            print(f"{module.p:10} Copy {datfile} to {default_datfile}")
+            print(f"{module.p:11} Copy {datfile} to {default_datfile}")
         default_datfile.write_text(datfile.read_text())
 
     command = f"cd {cwd}; " + config.machine.parsctst_command
     if verbose:
-        print(f"{module.p:10} Run command: {command}")
+        print(f"{module.p:11} Run command: {command}")
     subprocess.call(command, shell=True)
 
 def run_bdens(
@@ -164,12 +164,12 @@ def run_bdens(
     if datfile.name != _default_datfile:
         default_datfile = cwd / _default_datfile
         if verbose:
-            print(f"{module.p:10} Copy {datfile} to {default_datfile}")
+            print(f"{module.p:11} Copy {datfile} to {default_datfile}")
         default_datfile.write_text(datfile.read_text())
 
     command = f"cd {cwd}; " + config.machine.bdens_command
     if verbose:
-        print(f"{module.d:10} Run command: {command}")
+        print(f"{module.d:11} Run command: {command}")
     subprocess.call(command, shell=True)
 
 def fix_crp_file(filename, add_text="    GOOD   VPT4A"):

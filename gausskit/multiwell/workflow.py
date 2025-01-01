@@ -3,11 +3,14 @@ from pathlib import Path
 from gausskit.multiwell.mominert import (
     read_mominert_out, run_mominert, write_mominert, get_rotor,
 )
-from gausskit.multiwell.densum import write_densum, run_densum
-from gausskit.multiwell.thermo import write_thermo, run_thermo
 from gausskit.multiwell.sctst import (
     write_parsctst, write_bdens, run_parsctst, run_bdens, fix_crp_file,
 )
+from gausskit.multiwell.densum import write_densum, run_densum
+from gausskit.multiwell.thermo import (
+    read_electronic_partition_function, write_thermo, write_single_thermo, run_thermo
+)
+from gausskit.multiwell.multiwell import write_multiwell, run_multiwell
 
 from gausskit.settings import Configuration
 
@@ -16,7 +19,8 @@ config = Configuration()
 def run_PES_densdata(
     PES_data:dict,
     densdata_path:Path = Path("DensData"),
-    Egrain:str="10   3000   4000   50000",
+    thermo_temp:str = "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000",
+    Egrain:str = "10   3000   4000   50000",
     if_hinderedrotor:bool = False,
     if_anharm:bool = False,
     verbose:bool = True,
@@ -38,13 +42,12 @@ def run_PES_densdata(
             forwards_barrier = PES_data[PES_num]["PES_energy"]
             reverse_PES_num = list(PES_data.keys())[n + 1]
             backwards_barrier = PES_data[reverse_PES_num]["reverse"]
-            break
 
     print(item_mol_name_list)
 
     # 1. prepare working directory
     if not densdata_path.exists():
-        densdata_path.mkdir()
+        densdata_path.mkdir(parents=True)
 
     # 2 write and run mominert and densum
     for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
@@ -56,20 +59,40 @@ def run_PES_densdata(
         write_mominert(mol, datfile=densdata_path / datfile, verbose=verbose)
         run_mominert(densdata_path / datfile, densdata_path / outfile, verbose=verbose)
         krot, ad_rot = get_rotor(densdata_path / outfile, verbose=verbose)
+        mol.krotor = krot
+        mol.ad_rotor = ad_rot
 
         # 2.2 write and run densum
         datfile = f"{dummy_name}.vib"
         outfile = f"{dummy_name}.dens"
         write_densum(
             mol,
-            krot,
-            ad_rot,
             fname=dummy_name,
             Egrain=Egrain,
             datfile=densdata_path / datfile, 
             verbose=verbose
         )
         run_densum(densdata_path / datfile, densdata_path / outfile, verbose=verbose)
+
+        # 2.3 write and run thermo file for each molecules
+        if "default" in thermo_temp:
+            temp = "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000"
+        else:
+            temp = thermo_temp
+        write_single_thermo(
+            temp,
+            mol,
+            dummy_name,
+            densdata_path,
+            verbose=verbose,
+        )
+        datfile = densdata_path.absolute() / f"{dummy_name}.therm"
+        outfile = densdata_path.absolute() / f"{dummy_name}.therm.out"
+        run_thermo(datfile, outfile, verbose=verbose)
+
+        # 2.3.1 read Electronic partition function from thermo output files
+        qele = read_electronic_partition_function(outfile, verbose=verbose)
+        mol.electronic_partition_function = qele
 
 
     # 3 run bdens and/or parsctst if anharm
@@ -136,13 +159,14 @@ def run_thermo_workflow(
     verbose:bool = False,
 ):
 
-    if_hinderedrotor = thermo_methods["thermo_hinderedrotor"]
-    if_anharm = thermo_methods["thermo_anharm"]
+    if_hinderedrotor = thermo_methods["hinderedrotor"]
+    if_anharm = thermo_methods["anharm"]
 
     # run density of state data
     hindrot_item_reduced_mominert_dict = run_PES_densdata(
         PES_data,
         densdata_path=thermo_path.absolute(),
+        thermo_temp=thermo_methods["temperatures"],
         Egrain=Egrain,
         if_hinderedrotor=if_hinderedrotor,
         if_anharm=if_anharm,
@@ -168,38 +192,39 @@ def run_thermo_workflow(
 def run_multiwell_workflow(
     PES_data:dict,
     multiwell_methods:dict,
-    multiwell_path:Path = Path("thermo"),
+    multiwell_path:Path = Path("multiwell"),
     Egrain:str = "10   3000   4000   50000",
     verbose:bool = False,
 ):
-    return
 
-    # if_hinderedrotor = thermo_methods["thermo_hinderedrotor"]
-    # if_anharm = thermo_methods["thermo_anharm"]
-    #
-    # # run density of state data
-    # hindrot_item_reduced_mominert_dict = run_PES_densdata(
-    #     PES_data,
-    #     densdata_path=thermo_path.absolute(),
-    #     Egrain=Egrain,
-    #     if_hinderedrotor=if_hinderedrotor,
-    #     if_anharm=if_anharm,
+    if_hinderedrotor = False # multiwell_methods["thermo_hinderedrotor"]
+    if_anharm = multiwell_methods["anharm"]
+
+    densdata_path = multiwell_path.absolute() / "DensData"
+
+    # run density of state data
+    hindrot_item_reduced_mominert_dict = run_PES_densdata(
+        PES_data,
+        densdata_path,
+        Egrain=Egrain,
+        if_hinderedrotor=if_hinderedrotor,
+        if_anharm=if_anharm,
+        verbose=verbose,
+    )
+
+    # prepare thermo input file reaction.dat
+    datfile = "multiwell.dat"
+    write_multiwell(
+        PES_data,
+        multiwell_methods,
+        multiwell_path=multiwell_path.absolute(),
+        hindrot_item_reduced_mominert_dict=hindrot_item_reduced_mominert_dict,
+        datfile=multiwell_path.absolute() / datfile,
+        verbose=verbose,
+    )
+
+    # run_multiwell(
+    #     datfile=multiwell_path.absolute() / datfile,
     #     verbose=verbose,
     # )
-    #
-    # # prepare thermo input file reaction.dat
-    # datfile = "reaction.dat"
-    # write_thermo(
-    #     PES_data,
-    #     thermo_methods,
-    #     thermo_path=thermo_path.absolute(),
-    #     hindrot_item_reduced_mominert_dict=hindrot_item_reduced_mominert_dict,
-    #     datfile=thermo_path.absolute() / datfile,
-    #     verbose=verbose,
-    # )
-    #
-    # run_thermo(
-    #     datfile=thermo_path.absolute() / datfile,
-    #     verbose=verbose,
-    # )
-    #
+

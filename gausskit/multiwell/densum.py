@@ -49,8 +49,6 @@ def get_degrees_of_freedom_lines(
 
 def write_densum(
     mol:Molecules,
-    krot:float,
-    ad_rot:float,
     fname:str = None,
     Egrain="10   3000   4000   50000",
     datfile:Path = Path("densum.dat"),
@@ -66,6 +64,10 @@ def write_densum(
 
     # degrees of freedom
     degrees_of_freedom = len(nonimg_freq)
+
+    # k-rotor and 2D adiabatic rotor
+    krot = mol.krotor
+    ad_rot = mol.ad_rotor
 
     # densum will create fname.dens as output besides densum.out
     if fname is None:
@@ -87,7 +89,7 @@ def write_densum(
     lines.append("  ")
 
     if verbose:
-        print(f"{module:10} Write to {datfile}")
+        print(f"{module:11} Write to {datfile}")
 
     with open(datfile, "w") as f:
         for line in lines:
@@ -111,7 +113,7 @@ def run_densum(
     # run densum
     command = f"cd {cwd};" + config.machine.densum_command
     if verbose:
-        print(f"{module:10} Run command: {command}")
+        print(f"{module:11} Run command: {command}")
     subprocess.run(command, shell=True, capture_output=True)
 
     # get default output file name

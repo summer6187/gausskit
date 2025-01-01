@@ -215,12 +215,12 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
 
 
 def thermo_method_warning(thermo_methods, PES_methods):
-    if thermo_methods["thermo_anharm"]:
-        if thermo_methods["thermo_tunneling"]:
+    if thermo_methods["anharm"]:
+        if thermo_methods["tunneling"]:
             print("WARNING, Thermo anharm conflict with tunneling")
             print("Exiting program!")
             exit()
-        if thermo_methods["thermo_hinderedrotor"]:
+        if thermo_methods["hinderedrotor"]:
             print("WARNING, Thermo anharm conflict with thermo_hinderedrotor")
             print("Exiting program!")
             exit()
@@ -269,8 +269,8 @@ def PES_parser(config, verbose:bool=False):
     if "Thermo" in config.sections():
         calc_thermo = True
         Thermo_method = config_section_map(config, "Thermo")
-        thermo_list = list(Thermo_method["thermo"].split())
-        thermo_dir = Thermo_method["thermo_dir"]
+        thermo_list = list(Thermo_method["pes"].split())
+        thermo_dir = Thermo_method["dir"]
         thermo_tunneling = config_getboolean(config, "Thermo", "tunneling")
         thermo_hinderedrotor = config_getboolean(config, "Thermo", "hinderedrotor")
         thermo_anharm = config_getboolean(config, "Thermo", "anharm")
@@ -278,16 +278,16 @@ def PES_parser(config, verbose:bool=False):
             thermo_adj_barrier = list(Thermo_method["adj_barrier"].split())
         else:
             thermo_adj_barrier = []
-        thermo_temp = Thermo_method["temp_k"]
-        thermo_pressure = Thermo_method["pressure_atm"]
+        thermo_temperatures = Thermo_method["temperatures"]
+        thermo_pressures = Thermo_method["pressures"]
 
         thermo_methods = {
-            "thermo_tunneling": thermo_tunneling,
-            "thermo_hinderedrotor": thermo_hinderedrotor,
-            "thermo_anharm": thermo_anharm,
-            "thermo_adj_barrier": thermo_adj_barrier,
-            "thermo_temp": thermo_temp,
-            "thermo_pressure": thermo_pressure,
+            "tunneling": thermo_tunneling,
+            "hinderedrotor": thermo_hinderedrotor,
+            "anharm": thermo_anharm,
+            "adj_barrier": thermo_adj_barrier,
+            "temperatures": thermo_temperatures,
+            "pressures": thermo_pressures,
         }
         thermo_method_warning(thermo_methods, PES_methods)
 
@@ -296,19 +296,21 @@ def PES_parser(config, verbose:bool=False):
     if "Multiwell" in config.sections():
         calc_multiwell = True
         Multiwell_method = config_section_map(config, "Multiwell")
-        multiwell_pes = list(Multiwell_method["multiwell_pes"].split())
-        multiwell_dir = Multiwell_method["multiwell_dir"]
-        multiwell_wells = ast.literal_eval(Multiwell_method["multiwell_wells"]) # read a list
+        multiwell_pes = list(Multiwell_method["pes"].split())
+        multiwell_dir = Multiwell_method["dir"]
+        multiwell_pressures = list(Multiwell_method["pressures"].split())
+        multiwell_wells = ast.literal_eval(Multiwell_method["wells"]) # read a list
         if type(multiwell_wells) is int:
             # here we make sure this is a list object
             multiwell_wells = [multiwell_wells]
-        multiwell_channels = ast.literal_eval(Multiwell_method["multiwell_channels"])
+        multiwell_channels = ast.literal_eval(Multiwell_method["channels"])
         multiwell_anharm = config_getboolean(config, "Multiwell", "anharm")
 
         multiwell_methods = {
-            "multiwell_wells": multiwell_wells,
-            "multiwell_channels": multiwell_channels,
-            "multiwell_anharm": multiwell_anharm,
+            "pressures": multiwell_pressures,
+            "wells": multiwell_wells,
+            "channels": multiwell_channels,
+            "anharm": multiwell_anharm,
         }
 
     PES_datasets = {}
@@ -335,7 +337,7 @@ def PES_parser(config, verbose:bool=False):
 
     # thermo calc
     if calc_thermo:
-        print("thermo calculation")
+        print("-----------thermo calculation-----------")
         for _thermo_PES in thermo_list:
             PES_data = PES_datasets[_thermo_PES]
             thermo_path = Path(thermo_dir) / f"thermo_{_thermo_PES}"
@@ -344,7 +346,7 @@ def PES_parser(config, verbose:bool=False):
 
     # multiwell calc
     if calc_multiwell:
-        print("multiwell calculation")
+        print("----------multiwell calculation----------")
         for _multiwell_PES in multiwell_pes:
             PES_data = PES_datasets[_multiwell_PES]
             multiwell_path = Path(multiwell_dir) / f"multiwell_{_multiwell_PES}"

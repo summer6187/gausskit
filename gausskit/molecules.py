@@ -16,6 +16,7 @@ from gausskit.gaussian.anharm import (
     read_harm_freq_another,
 )
 from gausskit.gaussian.hindrot import Hinderedrotor, read_hindrot
+import gausskit.rdkit as rdkit
 
 
 def method_parser(method):
@@ -60,6 +61,10 @@ class Molecules(Atoms):
         self._external_symmetry_number = None
         self._zpe = None
         self._frequencies = np.array([])
+        self._krotor = None
+        self._ad_rotor = None
+        self._electronic_partition_function = None
+        self._optical_isomers = None
         self._anharm_zpe = None
         self._anharm_X_matrix = None
         self._method = None
@@ -112,6 +117,49 @@ class Molecules(Atoms):
     @external_symmetry_number.setter
     def external_symmetry_number(self, ESN):
         self._external_symmetry_number = ESN
+
+    @property
+    def krotor(self) -> float:
+        """return k-rotor rotational parameters"""
+        if self._krotor == None:
+            print("k-rotor rotational parameters is not set")
+        return self._krotor
+
+    @krotor.setter
+    def krotor(self, krot) -> float:
+        self._krotor = float(krot)
+
+    @property
+    def ad_rotor(self) -> float:
+        """return 2D adiabatic rotor rotational parameters"""
+        if self._ad_rotor == None:
+            print("2D adiabatic rotor rotational parameters is not set")
+        return self._ad_rotor
+
+    @ad_rotor.setter
+    def ad_rotor(self, adrot) -> float:
+        self._ad_rotor = float(adrot)
+
+    @property
+    def optical_isomers(self) -> int:
+        """return number of optical isomers"""
+        if self._optical_isomers == None:
+            self.set_optical_isomers()
+        return self._optical_isomers
+
+    def set_optical_isomers(self):
+        self._optical_isomers = rdkit.get_optical_isomers(self)
+
+    @property
+    def electronic_partition_function(self) -> float:
+        """return electronic partition function"""
+        if self._electronic_partition_function == None:
+            print("electronic_partition_function is not set")
+        return self._electronic_partition_function
+
+    @electronic_partition_function.setter
+    def electronic_partition_function(self, Qelect) -> float:
+        self._electronic_partition_function = float(Qelect)
 
     @property
     def zpe(self):
@@ -262,11 +310,13 @@ class Molecules(Atoms):
         mol.charge = _charge
         mol.multiplicity = _mult
 
+        mol.set_optical_isomers()
+
         # sanity check
         # check if the charge and multiplicity make sense? Do we really need this?
 
         # set external symmetry number
-        ESN = read_external_symmetry_number(filename)
+        ESN = read_external_symmetry_number(filename, n_atoms=len(mol.symbols))
         mol.external_symmetry_number = ESN
 
         # set energy
@@ -311,6 +361,7 @@ class Molecules(Atoms):
         mol_dict["multiplicity"] = self._multiplicity
         mol_dict["external_symmetry_number"] = self._external_symmetry_number
         mol_dict["electronic_energy"] = self._electronic_energy
+        mol_dict["optical_isomers"] = self.optical_isomers
         mol_dict["zpe"] = self._zpe
         mol_dict["frequencies"] = self._frequencies
         mol_dict["anharm_zpe"] = self._anharm_zpe
@@ -334,6 +385,7 @@ class Molecules(Atoms):
         new_mol._multiplicity = mol_dict.get("multiplicity")
         new_mol._electronic_energy = mol_dict["electronic_energy"]
         new_mol._external_symmetry_number = mol_dict.get("external_symmetry_number")
+        new_mol._optical_isomers = mol_dict.get("optical_isomers")
         new_mol._zpe = mol_dict["zpe"]
         new_mol._frequencies = np.asarray(mol_dict["frequencies"])
         new_mol._anharm_zpe = mol_dict["anharm_zpe"]
@@ -345,3 +397,11 @@ class Molecules(Atoms):
         new_mol.logpath = mol_dict["logpath"]
 
         return new_mol
+
+
+    def get_xyz_block(self, fmt='%22.15f'):
+        natoms = len(self.symbols)
+        block = "%d\n \n" % (natoms)
+        for s, (x, y, z) in zip(self.symbols, self.positions):
+            block += "%-2s %s %s %s\n" % (s, fmt % x, fmt % y, fmt % z)
+        return block

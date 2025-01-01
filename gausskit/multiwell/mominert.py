@@ -65,7 +65,7 @@ def write_mominert(
     # lines.append("  ")
 
     if verbose:
-        print(f"{module:10} Write to {datfile}")
+        print(f"{module:11} Write to {datfile}")
     with open(datfile, "w") as f:
         for line in lines:
             f.write(f"{line} {os.linesep}")
@@ -84,7 +84,7 @@ def run_mominert(
     # run mominert
     command = f"cd {cwd};" + config.machine.mominert_command + f" {datfile.name}"
     if verbose:
-        print(f"{module:10} Run command: {command}")
+        print(f"{module:11} Run command: {command}")
     subprocess.run(command, shell=True, capture_output=True)
 
     # get default output file name
@@ -96,7 +96,7 @@ def run_mominert(
 
     # move the default output file to targeted outfile
     if verbose:
-        print(f"{module:10} Write to {outfile}")
+        print(f"{module:11} Write to {outfile}")
     default_outfile.rename(outfile.absolute())
 
     return
@@ -111,17 +111,17 @@ def read_mominert_out(
     reduced_moment_of_inertia = []
     for n, line in enumerate(lines):
         if "REDUCED MOMENT OF INERTIA" in line:
-            print(f"{module:10} WARNING: Reduced moment of inertia will NOT be automatically added to .vibs file!")
+            print(f"{module:11} WARNING: Reduced moment of inertia will NOT be automatically added to .vibs file!")
             reduced_moment_of_inertia.append(float(line.split(":")[1].split()[0]))
 
         if "PRINCIP" in line:
             mominert_line = lines[n+1].split()
             (Ix, Iy, Iz) = [float(mominert_line[i]) for i in (2,5,8)]
             if verbose:
-                print(f"{module:10} Read reduced moment of inertia from {outfile}")
+                print(f"{module:11} Read reduced moment of inertia from {outfile}")
             return Ix, Iy, Iz, reduced_moment_of_inertia
 
-    print(f"{module:10} No reduced moment of inertia found from {outfile} !!!")
+    print(f"{module:11} No reduced moment of inertia found from {outfile} !!!")
     return None, None, None, reduced_moment_of_inertia
 
 def calc_rotor(Ix, Iy, Iz, verbose:bool=False):
@@ -149,7 +149,7 @@ def calc_rotor(Ix, Iy, Iz, verbose:bool=False):
         ADrot = np.sqrt(Iy * Iz)
 
     if verbose:
-        print(f"{module:10} Calculate k-rotor and adiabatic rotors {Krot=:.4f} {ADrot=:.4f} (amu*ang^2)")
+        print(f"{module:11} Calculate k-rotor and adiabatic rotors {Krot=:.4f} {ADrot=:.4f} (amu*ang^2)")
 
     return Krot, ADrot
 

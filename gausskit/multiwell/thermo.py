@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import subprocess
+from typing import Optional
 
 import numpy as np
 
@@ -13,6 +14,131 @@ config = Configuration()
 
 module = "[Thermo]"
 
+def get_thermo_head_lines(temp, n_species):
+    head_lines = [
+        "KCAL   MCC",
+        str(len(temp.split())),
+        temp,
+        f"{n_species}",
+    ]
+
+    return head_lines
+
+
+def get_thermo_lines(
+    mol:Molecules,
+    dummy_name:str,
+    thermo_path:Path,
+    mol_type:Optional[str] = None,
+    forwards_barrier:float = 0.0,
+    backwards_barrier:float = 0.0,
+    if_tunneling:bool = False,
+    if_anharm:bool = False,
+    if_hinderedrotor:bool = False,
+    hindrot_item_Mol_dict:dict = {},
+):
+    lines = []
+
+    if mol_type is not None:
+        lines.append(f"{mol_type}    {dummy_name}    0.0")
+    else:
+        if mol.ts:
+            # if no tunneling, set img_freq and backwards_barrier to 0
+            if not if_tunneling:
+                img_freq = 0
+                backwards_barrier = 0
+            else:
+                freq = mol.frequencies
+                img_freq_list = freq[freq<0]
+                assert len(img_freq_list) == 1, f"Something wrong with img frequency {img_freq_list}"
+                img_freq = img_freq_list[0]
+            lines.append(
+                f"ctst    {dummy_name}    {forwards_barrier}   {-img_freq}   {backwards_barrier}"
+            )
+        else:
+            lines.append(f"reac    {dummy_name}    0.0")
+
+    lines.append(f"{mol.get_chemical_formula()}")
+    lines.append(f"{mol.external_symmetry_number}   {mol.optical_isomers}   1")
+    lines.append(f" {0.0:<10} {mol.multiplicity}")
+
+    mominert_outfile = f"{dummy_name}.coords.out"
+    krot, ad_rot = get_rotor(thermo_path / mominert_outfile)
+
+    # if run anharmonic thermo
+    if if_anharm:
+        # count the number of k-rotor and adiabatic rotor [NOT hindered rotor!!!]
+        total_dof = 1 # read external file, this takes "one vibration"
+        if np.abs(krot) > 1e-12:
+            total_dof += 1
+        if np.abs(ad_rot) > 1e-12:
+            total_dof += 1
+
+        # in case of one-atom species, don't write any degrees of freedom
+        if len(mol.numbers) <= 1:
+            total_dof = 0
+            lines.append(f"{total_dof}   HAR   AMUA")
+            lines.append(" ")
+            return lines
+
+        # number of vibrations and rotations to be read in
+        lines.append(f"{total_dof}   HAR   AMUA")
+
+        # add read external file line
+        if mol.ts:
+            line = "1    crp   0.0      1.0     1     ! read external file"
+        else:
+            line = "1    qvb   0.0      1.0     1     ! read external file"
+        lines.append(line)
+
+        # add k-rotor and adiabatic rotor line
+        # additional mode number begins with 2
+        rottype = "qrot " if (krot < 11.0) else "rot  "
+        n_dof = 1
+        if np.abs(krot) > 1e-12:
+            n_dof += 1
+            lines.append(
+                f" {n_dof:3d}   {rottype:6} {krot:12.4f}   1.0   1   ! K-rotor"
+            )
+
+        rottype = "qrot " if (ad_rot < 11.0) else "rot  "
+        if np.abs(ad_rot) > 1e-12:
+            n_dof += 1
+            lines.append(
+                f" {n_dof:3d}   {rottype:6} {ad_rot:12.4f}   1.0   2   ! 2D adiabatic rotor"
+            )
+
+    # with normal modes, lines will be the same as fname.vibs
+    else:
+        # get all non imaginary frequencies
+        freq = mol.frequencies
+        nonimg_freq = freq[freq>0]
+        total_dof = len(nonimg_freq)
+        if np.abs(krot) > 1e-12:
+            total_dof += 1
+        if np.abs(ad_rot) > 1e-12:
+            total_dof += 1
+        lines.append(f"{total_dof}   HAR   AMUA")
+        dof_lines = get_degrees_of_freedom_lines(mol, krot, ad_rot)
+
+        # if thermo_hinderedrotor and mol has hindered rotor
+        # replace the selected vibration mode with the hindered rotor DOF
+        if if_hinderedrotor and dummy_name in hindrot_item_Mol_dict:
+            # vibration in xxx.therm file is One-based numbering
+            mol = hindrot_item_Mol_dict[dummy_name]
+            corrected_vibs = mol.hinderedrotor._corrected_vibs
+            for n_index, n_vib in enumerate(corrected_vibs):
+                corr_rot = mol.hinderedrotor._reduced_moms[n_index]
+                rottype = "qrot " if (corr_rot < 11.0) else "rot  "
+                line = f"  # {n_vib:>3}{rottype:>6}{corr_rot:>9.4f}(from G16)"
+                line += f"{hindrot_item_reduced_mominert_dict[dummy_name][n_index]:>9.4f}(from Mominert)  "
+                line += f" {mol.hinderedrotor._symmetry_numbers[n_index]}   1"
+                dof_lines[n_vib] = line
+
+        lines += dof_lines
+    lines.append(f"  {os.linesep}")
+    return lines
+
 def write_thermo(
     PES_data,
     thermo_methods,
@@ -23,12 +149,12 @@ def write_thermo(
 ):
 
     # Parse thermo_methods information
-    thermo_tunneling = thermo_methods["thermo_tunneling"]
-    thermo_hinderedrotor = thermo_methods["thermo_hinderedrotor"]
-    thermo_anharm = thermo_methods["thermo_anharm"]
-    thermo_adj_barrier = thermo_methods["thermo_adj_barrier"]
-    thermo_temp = thermo_methods["thermo_temp"]
-    thermo_pressure = thermo_methods["thermo_pressure"]
+    if_tunneling = thermo_methods["tunneling"]
+    if_hinderedrotor = thermo_methods["hinderedrotor"]
+    if_anharm = thermo_methods["anharm"]
+    thermo_adj_barrier = thermo_methods["adj_barrier"]
+    thermo_temp = thermo_methods["temperatures"]
+    thermo_pressure = thermo_methods["pressures"]
 
     if "default" in thermo_temp:
         temp = "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000"
@@ -60,8 +186,8 @@ def write_thermo(
 
     # prepare hindered rot calculations
     # hindrot_item_Mol_dict: Molecule Objects if exists hindrot calculation
-    if thermo_hinderedrotor:
-        hindrot_item_Mol_dict = {}
+    hindrot_item_Mol_dict = {}
+    if if_hinderedrotor:
         for n, PES_num in enumerate(PES_data):
             for item in PES_data[PES_num]["PES_items"]:
                 if "Mol_hindrot" in PES_data[PES_num]["PES_items"][item]:
@@ -69,106 +195,24 @@ def write_thermo(
                         "Mol_hindrot"
                     ]
 
-    reaction_lines = [
-        "KCAL   MCC",
-        str(len(temp.split())),
-        temp,
-        f"{len(item_list)}",
-    ]
+    reaction_lines = get_thermo_head_lines(temp, len(item_list))
 
     for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
         mol = Mol
 
-        if mol.ts:
-            # if no tunneling, set img_freq and backwards_barrier to 0
-            if not thermo_tunneling:
-                img_freq = 0
-                backwards_barrier = 0
-            reaction_lines.append(
-                f"ctst    {dummy_name}    {forwards_barrier}   {-img_freq}   {backwards_barrier}"
-            )
-        else:
-            reaction_lines.append(f"reac    {dummy_name}    0.0")
+        lines = get_thermo_lines(
+            mol,
+            dummy_name = dummy_name,
+            thermo_path = thermo_path,
+            forwards_barrier = forwards_barrier,
+            backwards_barrier = backwards_barrier,
+            if_tunneling = if_tunneling,
+            if_anharm = if_anharm,
+            if_hinderedrotor = if_hinderedrotor,
+            hindrot_item_Mol_dict = hindrot_item_Mol_dict,
+        )
 
-        reaction_lines.append(f"{mol.get_chemical_formula()}")
-        reaction_lines.append(f"{mol.external_symmetry_number}   1   1")
-        reaction_lines.append(f"{0.0:10} {mol.multiplicity}")
-
-        mominert_outfile = f"{dummy_name}.coords.out"
-        krot, ad_rot = get_rotor(thermo_path / mominert_outfile)
-
-        # if run anharmonic thermo
-        if thermo_anharm:
-            # count the number of k-rotor and adiabatic rotor [NOT hindered rotor!!!]
-            total_dof = 1 # read external file, this takes "one vibration"
-            if np.abs(krot) > 1e-12:
-                total_dof += 1
-            if np.abs(ad_rot) > 1e-12:
-                total_dof += 1
-            
-            # in case of one-atom species, don't write any degrees of freedom
-            if len(mol.numbers) <= 1:
-                total_dof = 0
-                reaction_lines.append(f"{total_dof}   HAR   AMUA")
-                reaction_lines.append(" ")
-                continue
-
-            # number of vibrations and rotations to be read in
-            reaction_lines.append(f"{total_dof}   HAR   AMUA")
-
-            # add read external file line
-            if mol.ts:
-                line = "1    crp   0.0      1.0     1     ! read external file"
-            else:
-                line = "1    qvb   0.0      1.0     1     ! read external file"
-            reaction_lines.append(line)
-
-            # add k-rotor and adiabatic rotor line
-            # additional mode number begins with 2
-            rottype = "qrot " if (krot < 11.0) else "rot  "
-            n_dof = 1
-            if np.abs(krot) > 1e-12:
-                n_dof += 1
-                reaction_lines.append(
-                    f" {n_dof:3d}   {rottype:6} {krot:12.4f}   1.0   1   ! K-rotor"
-                )
-
-            rottype = "qrot " if (ad_rot < 11.0) else "rot  "
-            if np.abs(ad_rot) > 1e-12:
-                n_dof += 1
-                reaction_lines.append(
-                    f" {n_dof:3d}   {rottype:6} {ad_rot:12.4f}   1.0   2   ! 2D adiabatic rotor"
-                )
-
-        # with normal modes, lines will be the same as fname.vibs
-        else:
-            # get all non imaginary frequencies
-            freq = mol.frequencies
-            nonimg_freq = freq[freq>0]
-            total_dof = len(nonimg_freq)
-            if np.abs(krot) > 1e-12:
-                total_dof += 1
-            if np.abs(ad_rot) > 1e-12:
-                total_dof += 1
-            reaction_lines.append(f"{total_dof}   HAR   AMUA")
-            dof_lines = get_degrees_of_freedom_lines(mol, krot, ad_rot)
-
-            # if thermo_hinderedrotor and mol has hindered rotor
-            # replace the selected vibration mode with the hindered rotor DOF
-            if thermo_hinderedrotor and dummy_name in hindrot_item_Mol_dict:
-                # vibration in xxx.therm file is One-based numbering
-                mol = hindrot_item_Mol_dict[dummy_name]
-                corrected_vibs = mol.hinderedrotor._corrected_vibs
-                for n_index, n_vib in enumerate(corrected_vibs):
-                    corr_rot = mol.hinderedrotor._reduced_moms[n_index]
-                    rottype = "qrot " if (corr_rot < 11.0) else "rot  "
-                    line = f"  # {n_vib:>3}{rottype:>6}{corr_rot:>9.4f}(from G16)"
-                    line += f"{hindrot_item_reduced_mominert_dict[dummy_name][n_index]:>9.4f}(from Mominert)  "
-                    line += f" {mol.hinderedrotor._symmetry_numbers[n_index]}   1"
-                    dof_lines[n_vib] = line
-
-            reaction_lines += dof_lines
-        reaction_lines.append(f"  {os.linesep}")
+        reaction_lines += lines
 
     reaction_lines.append(f"  {os.linesep}")
 
@@ -178,14 +222,92 @@ def write_thermo(
             f.write(f"{line} {os.linesep}")
         f.write(f"  {os.linesep}")
 
+def write_single_thermo(
+    temp,
+    mol:Molecules,
+    dummy_name:str,
+    thermo_path:Path = Path("thermo"),
+    verbose:bool = False,
+):
+
+    reaction_lines = get_thermo_head_lines(temp, 1)
+
+    lines = get_thermo_lines(
+        mol,
+        dummy_name = dummy_name,
+        thermo_path = thermo_path,
+        mol_type = "none"
+    )
+
+    reaction_lines += lines
+
+    reaction_lines.append(f"  {os.linesep}")
+
+    # prepare thermo.dat
+    data_name = f"{dummy_name}.therm"
+    datfile = thermo_path.absolute() / data_name
+    if verbose:
+        print(f"{module:11} Write to: {datfile}")
+    with open(datfile, "w") as f:
+        for line in reaction_lines:
+            f.write(f"{line} {os.linesep}")
+        f.write(f"  {os.linesep}")
+    return
+
+
 def run_thermo(
     datfile:Path = Path("thermo.dat"),
+    outfile:Path = None,
     verbose:bool = False,
 ):
     cwd = datfile.parent.absolute()
 
     command = f"cd {cwd}; " + config.machine.thermo_command + f" {datfile.name}"
     if verbose:
-        print(f"{module:10} Run command: {command}")
+        print(f"{module:11} Run command: {command}")
     subprocess.call(command, shell=True)
+
+    if outfile is not None:
+        # get default output file name
+        _datname = str(datfile.absolute())
+        default_outfile = Path(_datname[:len(_datname)-4] + ".out")
+
+        # make sure the output file exists
+        assert default_outfile.exists(), f"{default_outfile} doesn't exists!"
+
+        # move the default output file to targeted outfile
+        if verbose:
+            print(f"{module:11} Write to {outfile}")
+        default_outfile.rename(outfile.absolute())
+
+def read_electronic_partition_function(
+    outfile:Path = Path("thermo.out"),
+    verbose:bool = False,
+) -> float:
+    with open(outfile, "r") as f:
+        lines = f.readlines()
+
+    temp_list = []
+    qele_list = []
+
+    start_line_number = 0
+    for n_line, line in enumerate(lines):
+        if "Qelectr" in line:
+            start_line_number = n_line + 1
+            break
+
+    for line in lines[start_line_number:]:
+        data = line.split()
+        if data != []:
+            temp_list.append(float(data[0]))
+            qele_list.append(float(data[8]))
+        else:
+            break
+
+    # Qelectr is temperature dependent, but usually the temperature 
+    # dependence is neglagible, and the all the numbers are same
+    qele = np.array(qele_list)
+    assert np.allclose(qele, np.ones_like(qele) * qele[0]), f"Electronic partition function is T dependent! {qele}"
+
+    return float(qele[0])
 
