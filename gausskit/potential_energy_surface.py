@@ -304,12 +304,14 @@ def PES_parser(config, verbose:bool=False):
             # here we make sure this is a list object
             multiwell_wells = [multiwell_wells]
         multiwell_channels = ast.literal_eval(Multiwell_method["channels"])
+        multiwell_tunneling = config_getboolean(config, "Multiwell", "tunneling")
         multiwell_anharm = config_getboolean(config, "Multiwell", "anharm")
 
         multiwell_methods = {
             "pressures": multiwell_pressures,
             "wells": multiwell_wells,
             "channels": multiwell_channels,
+            "tunneling": multiwell_tunneling,
             "anharm": multiwell_anharm,
         }
 

@@ -3,6 +3,7 @@ import subprocess
 
 from gausskit.multiwell.workflow import fix_crp_file
 from gausskit.multiwell.sctst import write_bdens, write_parsctst
+from gausskit.rdkit import get_lj_parameters
 from gausskit.settings import Configuration
 from gausskit._defaults import colliders, trail_line
 
@@ -24,6 +25,7 @@ def write_multiwell(
     multiwell_pressures = multiwell_methods["pressures"]
     multiwell_wells = multiwell_methods["wells"]
     multiwell_channels = multiwell_methods["channels"]
+    multiwell_tunneling = multiwell_methods["tunneling"]
     multiwell_anharm = multiwell_methods["anharm"]
 
     # gather PES_info
@@ -125,22 +127,32 @@ def write_multiwell(
 
     # formatting collider model
     collider_line = colliders[collider]
+
+    # get reactant mass
+    n_well = multiwell_wells[0]
+    dummy_name_keys = PES_data[str(n_well)]["PES_items"].keys()
+    dummy_name = list(dummy_name_keys)[0]
+    mol = PES_data[str(n_well)]["PES_items"][dummy_name]["Mol"]
+    collider_line += f"{mol.get_masses().sum():.4f}     ! {collider} Collider"
+
     reaction_lines.append(collider_line)
     for n_well in multiwell_wells:
         # Mol: index number of Well
         n_well = n_well
 
-        # Sig: Lennard-Jones $\sigma$ (Angstrom) for this well
-        lj_sigma = "5.17"
+        dummy_name_keys = PES_data[str(n_well)]["PES_items"].keys()
+        dummy_name = list(dummy_name_keys)[0]
+        mol = PES_data[str(n_well)]["PES_items"][dummy_name]["Mol"]
 
+        # Sig: Lennard-Jones $\sigma$ (Angstrom) for this well
         # Eps: Lennard-Jones $\epsilon$/kB (Kelvins) for this well
-        lj_eps = "395.10"
-        
+        lj_sigma, lj_eps = get_lj_parameters(mol)
+
         # ITYPE: selects model type in Subroutine PDOWN (see below for description of collision
         # models). Model types and explanations are given below.
         itype = 1
 
-        line = f"{n_well}   {lj_sigma}   {lj_eps}   {itype}    "
+        line = f"{n_well}   {lj_sigma:.4f}   {lj_eps:.4f}   {itype}    "
 
         # DC(8): eight (8) coefficients for energy transfer model
         line += "100.  0.0   0.0   0.0   0.0   0.0   0.0   0.0"
@@ -182,11 +194,28 @@ def write_multiwell(
         line = f"{n_mol_dict[n_well]}  {n_mol_dict[n_product]}  {dummy_name:>10}  {rotational_parameter:.4f}   "
         line += f"{external_symmetry_number}   {electronic_partition_function}   {chiral_stereoisomers}   "
         line += f"{a_factor}   {relative_critical_energy:.4f}   "
-        line += f"'rev' 'NOTUN' 'FAST' 'cent2' 'sum'"
-        reaction_lines.append(line)
 
+        Habs_tunneling = False
+        if multiwell_tunneling:
+            # check if there is any H abstraction reaction
+            dummy_name_keys = PES_data[str(n_product)]["PES_items"].keys()
+            for dummy_name in list(dummy_name_keys):
+                prod_mol = PES_data[str(n_product)]["PES_items"][dummy_name]["Mol"]
+                if prod_mol.get_chemical_formula() == "H":
+                    Habs_tunneling = True
+
+        if Habs_tunneling:
+            line += f"'rev' 'TUN' 'FAST' 'NOCENT' 'sum'"
+            reaction_lines.append(line)
+            freq = mol.frequencies
+            img_freq = freq[freq<0][0]
+            assert img_freq < 0, f"Frequency problem: {freq}"
+            reaction_lines.append(f"'TUN'    {-img_freq:.4f}")
+        else:
+            line += f"'rev' 'NOTUN' 'FAST' 'cent2' 'sum'"
+            reaction_lines.append(line)
     # trial line
-    reaction_lines.append("\n")
+    reaction_lines.append("")
     reaction_lines.append(trail_line)
 
     multiwell_dat = multiwell_path / "multiwell.dat"
