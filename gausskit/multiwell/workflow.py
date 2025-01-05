@@ -10,7 +10,9 @@ from gausskit.multiwell.densum import write_densum, run_densum
 from gausskit.multiwell.thermo import (
     read_electronic_partition_function, write_thermo, write_single_thermo, run_thermo
 )
-from gausskit.multiwell.multiwell import write_multiwell, run_multiwell
+from gausskit.multiwell.multiwell import (
+    write_multiwell, run_multiwell, run_bimol_thermo
+)
 
 from gausskit.settings import Configuration
 
@@ -203,7 +205,7 @@ def run_multiwell_workflow(
     densdata_path = multiwell_path.absolute() / "DensData"
 
     # run density of state data
-    hindrot_item_reduced_mominert_dict = run_PES_densdata(
+    run_PES_densdata(
         PES_data,
         densdata_path,
         Egrain=Egrain,
@@ -212,19 +214,26 @@ def run_multiwell_workflow(
         verbose=verbose,
     )
 
+    # run thermo for bimolecular reaction if required
+    if multiwell_methods.get("bimolecular_channel"):
+        run_bimol_thermo(
+            PES_data,
+            multiwell_methods,
+            thermo_path=densdata_path,
+            verbose=verbose,
+        )
+
     # prepare thermo input file reaction.dat
     datfile = "multiwell.dat"
     write_multiwell(
         PES_data,
         multiwell_methods,
-        multiwell_path=multiwell_path.absolute(),
-        hindrot_item_reduced_mominert_dict=hindrot_item_reduced_mominert_dict,
         datfile=multiwell_path.absolute() / datfile,
         verbose=verbose,
     )
 
-    # run_multiwell(
-    #     datfile=multiwell_path.absolute() / datfile,
-    #     verbose=verbose,
-    # )
+    run_multiwell(
+        datfile=multiwell_path.absolute() / datfile,
+        verbose=verbose,
+    )
 

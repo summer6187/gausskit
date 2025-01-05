@@ -1,8 +1,8 @@
+import enum
 from pathlib import Path
 import subprocess
 
-from gausskit.multiwell.workflow import fix_crp_file
-from gausskit.multiwell.sctst import write_bdens, write_parsctst
+from gausskit.multiwell.thermo import write_thermo, run_thermo
 from gausskit.rdkit import get_lj_parameters
 from gausskit.settings import Configuration
 from gausskit._defaults import colliders, trail_line
@@ -14,14 +14,13 @@ module = "[Multiwell]"
 def write_multiwell(
     PES_data,
     multiwell_methods,
-    multiwell_path:Path,
-    hindrot_item_reduced_mominert_dict,
     collider="N2",
     Egrain="10   3000    4000    50000",
-    datfile:Path = Path("densum.dat"),
+    datfile:Path = Path("multiwell.dat"),
     verbose:bool = False,
 ):
     # Parse multiwell_methods information
+    multiwell_temperature = multiwell_methods["temperature"]
     multiwell_pressures = multiwell_methods["pressures"]
     multiwell_wells = multiwell_methods["wells"]
     multiwell_channels = multiwell_methods["channels"]
@@ -59,13 +58,20 @@ def write_multiwell(
         "",
         "'ATM '  'KCAL'  'AMUA'",
         "",
-        "298   298      !   <-  translational and initial vibrational temperatures.",
+        f"{multiwell_temperature}    {multiwell_temperature}   !   <-  translational and initial vibrational temperatures.",
         "",
         f"{len(multiwell_pressures)}",  # number of pressure
         "  ".join(multiwell_pressures),  # pressure
         "",
-        f"{len(multiwell_wells)}  {len(multiwell_channels)}", # here we assume there is one and only one product for each channel
     ]
+
+    num_product = len(multiwell_channels)
+
+    if multiwell_methods.get("bimolecular_channel"):
+        print(f"{module:10} Warning!!! Currently only one bimolecular reation implementated")
+        num_product += 1
+
+    reaction_lines.append(f"{len(multiwell_wells)}  {num_product}") # here we assume there is one and only one product for each channel
     
     n_mol_dict = {}
     n_mol = 0 # number of wells or products in this section
@@ -108,6 +114,27 @@ def write_multiwell(
     
     # formatting product lines
     for (n_well, n_ts, n_product) in multiwell_channels:
+        dummy_name_keys = PES_data[str(n_product)]["PES_items"].keys()
+        product_dummy_name = "+".join(list(dummy_name_keys))
+
+        # mol = PES_data[str(n_product)]["PES_items"][dummy_name]["Mol"]
+        # mol_name = PES_data[str(n_product)]["PES_items"][dummy_name]["mol_name"]
+
+        n_mol += 1
+        # Hmol: enthalpy of formation at 0 K (units defined by keyword on Line 3)
+        # [ignored unless tunneling is used]
+        relative_energy = PES_data[str(n_product)]["PES_energy"]
+        line = f"{n_mol}  {product_dummy_name:>10}  {relative_energy:.4f}"
+        reaction_lines.append(line)
+
+        n_mol_dict[n_product] = n_mol
+
+    if multiwell_methods.get("bimolecular_channel"):
+        bimolecular_channel = multiwell_methods["bimolecular_channel"]
+
+        # here we fix the last item in the channel to be the product
+        n_product = bimolecular_channel[-1]
+
         dummy_name_keys = PES_data[str(n_product)]["PES_items"].keys()
         product_dummy_name = "+".join(list(dummy_name_keys))
 
@@ -214,14 +241,36 @@ def write_multiwell(
         else:
             line += f"'rev' 'NOTUN' 'FAST' 'cent2' 'sum'"
             reaction_lines.append(line)
+
+
+    # bimolecular competing reaction if required
+    if multiwell_methods.get("bimolecular_channel"):
+        bimolecular_channel = multiwell_methods["bimolecular_channel"]
+
+        # here we fix the last item in the channel to be the product
+        n_product = bimolecular_channel[-1]
+        n_well = bimolecular_channel[0]
+
+        A, B = multiwell_methods["bimolecular_rates"]
+
+        reaction_lines.append("")
+        reaction_lines.append("MORERXN")
+        reaction_lines.append("1") # Currently only one bimolecular_channel is accepted
+
+        bimol_dummy_name = "bimol" #FIXME this need to update to valid dummy name 
+
+        line = f"{n_mol_dict[n_well]}   {n_mol_dict[n_product]}    {bimol_dummy_name}   2   "
+        line += f"{A:.6e}    {B}    0.0"
+
+        reaction_lines.append(line)
+
     # trial line
     reaction_lines.append("")
     reaction_lines.append(trail_line)
 
-    multiwell_dat = multiwell_path / "multiwell.dat"
     if verbose:
-        print(f"{module:11} Write to {multiwell_dat}")
-    reaction_f = open(multiwell_dat, "w")
+        print(f"{module:11} Write to {datfile}")
+    reaction_f = open(datfile, "w")
     reaction_f.write('\n'.join(reaction_lines) + '\n')
     reaction_f.close()
 
@@ -237,3 +286,71 @@ def run_multiwell(
         print(f"{module:10} Run command: {command}")
     subprocess.call(command, shell=True)
     return
+
+
+def get_thermo_methods(
+    multiwell_methods: dict,
+    verbose:bool = False,
+):
+    thermo_methods = {
+        "tunneling": False,
+        "hinderedrotor": False,
+        "anharm": multiwell_methods["anharm"],
+        "adj_barrier": [],
+        "temperatures": f"{multiwell_methods['temperature']}",
+        "pressures": multiwell_methods["pressures"],
+    }
+    if verbose:
+        print(f"{module:10} Thermo methods from multiwell methods")
+        print(f"{module:10} {thermo_methods =}")
+    return thermo_methods
+
+
+def read_rate_from_thermo(
+    outfile:Path,
+):
+    with open(outfile, "r") as f:
+        lines = f.readlines()
+
+    for nn, line in enumerate(lines):
+        if "A(T)" in line:
+            dataline = lines[nn+1]
+            break
+
+    data_list = dataline.split()
+    A, B = data_list[2], data_list[3]
+    return float(A), -float(B)
+
+
+def run_bimol_thermo(
+    PES_data:dict,
+    multiwell_methods:dict,
+    thermo_path:Path,
+    verbose:bool = False,
+):
+    bimol_PES_data = {}
+    for PES_num in multiwell_methods["bimolecular_channel"]:
+        bimol_PES_data[PES_num] = PES_data[str(PES_num)]
+
+    # prepare thermo input file reaction.dat
+    datfile = "bimol_reaction.dat"
+    write_thermo(
+        bimol_PES_data,
+        thermo_methods=get_thermo_methods(multiwell_methods),
+        thermo_path=thermo_path,
+        hindrot_item_reduced_mominert_dict={},
+        datfile=thermo_path / datfile,
+        verbose=verbose,
+    )
+
+    run_thermo(
+        datfile=thermo_path / datfile,
+        verbose=verbose,
+    )
+
+    outfile = thermo_path / Path(datfile).with_suffix(".out")
+    A, B = read_rate_from_thermo(
+        outfile,
+    )
+
+    multiwell_methods["bimolecular_rates"] = (A, B)

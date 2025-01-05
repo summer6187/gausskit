@@ -117,8 +117,8 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
 
         PES_item_dict = {}
         plus_minus = "+"
+        final_ts = False
         for n, item in enumerate(item_list):
-            final_ts = False
             if item == "+":
                 plus_minus = "+"
             elif item == "-":
@@ -298,6 +298,7 @@ def PES_parser(config, verbose:bool=False):
         Multiwell_method = config_section_map(config, "Multiwell")
         multiwell_pes = list(Multiwell_method["pes"].split())
         multiwell_dir = Multiwell_method["dir"]
+        multiwell_temperature = float(Multiwell_method["temperature"])
         multiwell_pressures = list(Multiwell_method["pressures"].split())
         multiwell_wells = ast.literal_eval(Multiwell_method["wells"]) # read a list
         if type(multiwell_wells) is int:
@@ -307,12 +308,29 @@ def PES_parser(config, verbose:bool=False):
         multiwell_tunneling = config_getboolean(config, "Multiwell", "tunneling")
         multiwell_anharm = config_getboolean(config, "Multiwell", "anharm")
 
+        # bimolecular reaction is optional
+        if "bimolecular_channel" in Multiwell_method:
+            multiwell_bimolecular_channel = ast.literal_eval(Multiwell_method["bimolecular_channel"])
+        else:
+            multiwell_bimolecular_channel = None
+        if "bimolecular_concentrations" in Multiwell_method:
+            multiwell_bimolecular_concentrations = ast.literal_eval(Multiwell_method["bimolecular_concentrations"]) # read a list
+        else:
+            multiwell_bimolecular_concentrations = None
+
+        if type(multiwell_wells) is int:
+            # here we make sure this is a list object
+            multiwell_wells = [multiwell_wells]
+
         multiwell_methods = {
+            "temperature": multiwell_temperature,
             "pressures": multiwell_pressures,
             "wells": multiwell_wells,
             "channels": multiwell_channels,
             "tunneling": multiwell_tunneling,
             "anharm": multiwell_anharm,
+            "bimolecular_channel": multiwell_bimolecular_channel,
+            "bimolecular_concentrations": multiwell_bimolecular_concentrations,
         }
 
     PES_datasets = {}
