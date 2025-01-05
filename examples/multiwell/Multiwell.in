@@ -1,0 +1,32 @@
+[Method]
+Eele:                       G4
+ZPE:                        MP2
+Anharm:                     False
+database:                   database.json
+
+[Multiwell]
+PES:                        PES_harm
+dir:                        multiwell
+temperature:                298
+pressures:                  1
+wells:                      1
+channels:                   [1,2,3], [1,4,5], [1,6,7]
+collider:                   N2
+tunneling:                  True
+anharm:                     False
+bimolecular_channel:        [1,8,9]
+bimolecular_concentrations: 0.1, 0.5, 1.0
+
+[PES_harm]
+1: Alkoxyl133a
+2: Alkoxyl133a-HLeave_ts
+3: Alkoxyl133a-HLeave-CF3C(O)Cl + H
+4: Alkoxyl133a-ClLeave_ts
+5: Alkoxyl133a-ClLeave-CF3CHO + Cl
+6: Alkoxyl133a-RLeave_ts
+7: Alkoxyl133a-RLeave-CF3 + Alkoxyl133a-RLeave-HC(O)Cl
+8: Alkoxyl133a-HLeave_O2_ts - O2
+9: Alkoxyl133a-HLeave-CF3C(O)Cl + HO2 - O2
+10: Alkoxyl133a-HLeave_O2_another_ts - O2
+11: Alkoxyl133a-HLeave-CF3C(O)Cl + HO2 - O2
+
