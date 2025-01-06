@@ -14,8 +14,10 @@ channels:                   [1,2,3], [1,4,5], [1,6,7]
 collider:                   N2
 tunneling:                  True
 anharm:                     False
-bimolecular_channel:        [1,8,9]
+bimolecular_channel:        [1,10,11]
 bimolecular_concentrations: 0.1, 0.5, 1.0
+trails:                     50  'COLL'  500000     'THERMAL'   1   3   0.
+
 
 [PES_harm]
 1: Alkoxyl133a

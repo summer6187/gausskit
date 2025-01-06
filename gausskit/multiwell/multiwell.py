@@ -17,6 +17,7 @@ def write_multiwell(
     collider="N2",
     Egrain="10   3000    4000    50000",
     datfile:Path = Path("multiwell.dat"),
+    bimolecular_concentration:float = 1.,
     verbose:bool = False,
 ):
     # Parse multiwell_methods information
@@ -253,6 +254,9 @@ def write_multiwell(
 
         A, B = multiwell_methods["bimolecular_rates"]
 
+        # concentration of bath gas
+        A *= bimolecular_concentration
+
         reaction_lines.append("")
         reaction_lines.append("MORERXN")
         reaction_lines.append("1") # Currently only one bimolecular_channel is accepted
@@ -266,7 +270,7 @@ def write_multiwell(
 
     # trial line
     reaction_lines.append("")
-    reaction_lines.append(trail_line)
+    reaction_lines.append(multiwell_methods["trails"])
 
     if verbose:
         print(f"{module:11} Write to {datfile}")

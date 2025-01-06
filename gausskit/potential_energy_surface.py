@@ -8,6 +8,7 @@ import json
 from ase.units import Hartree, kcal, mol
 from gausskit.multiwell.workflow import run_thermo_workflow, run_multiwell_workflow
 from gausskit.molecules import Molecules
+from gausskit._defaults import trail_line
 
 
 def config_section_map(config, section):
@@ -309,14 +310,21 @@ def PES_parser(config, verbose:bool=False):
         multiwell_anharm = config_getboolean(config, "Multiwell", "anharm")
 
         # bimolecular reaction is optional
-        if "bimolecular_channel" in Multiwell_method:
+        if Multiwell_method.get("bimolecular_channel"):
             multiwell_bimolecular_channel = ast.literal_eval(Multiwell_method["bimolecular_channel"])
         else:
             multiwell_bimolecular_channel = None
-        if "bimolecular_concentrations" in Multiwell_method:
+        if Multiwell_method.get("bimolecular_concentrations"):
             multiwell_bimolecular_concentrations = ast.literal_eval(Multiwell_method["bimolecular_concentrations"]) # read a list
         else:
             multiwell_bimolecular_concentrations = None
+
+        # trail line
+        if Multiwell_method.get("trails"):
+            multiwell_trail_line = Multiwell_method["trails"]
+        else:
+            multiwell_trail_line = trail_line
+
 
         if type(multiwell_wells) is int:
             # here we make sure this is a list object
@@ -331,6 +339,7 @@ def PES_parser(config, verbose:bool=False):
             "anharm": multiwell_anharm,
             "bimolecular_channel": multiwell_bimolecular_channel,
             "bimolecular_concentrations": multiwell_bimolecular_concentrations,
+            "trails": multiwell_trail_line,
         }
 
     PES_datasets = {}

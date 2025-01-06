@@ -9,4 +9,4 @@ run: Multiwell.in
 	gausskit run $< --verbose
 
 clean:
-	rm -r thermo_PES_*
+	rm -r multiwell

@@ -224,16 +224,34 @@ def run_multiwell_workflow(
         )
 
     # prepare thermo input file reaction.dat
-    datfile = "multiwell.dat"
-    write_multiwell(
-        PES_data,
-        multiwell_methods,
-        datfile=multiwell_path.absolute() / datfile,
-        verbose=verbose,
-    )
+    if multiwell_methods.get("bimolecular_concentrations"):
+        for nn, concentration in enumerate(multiwell_methods["bimolecular_concentrations"]):
+            datfile = f"multiwell_{nn}.dat"
+            write_multiwell(
+                PES_data,
+                multiwell_methods,
+                datfile=multiwell_path.absolute() / datfile,
+                bimolecular_concentration=concentration,
+                verbose=verbose,
+            )
 
-    run_multiwell(
-        datfile=multiwell_path.absolute() / datfile,
-        verbose=verbose,
-    )
+            run_multiwell(
+                datfile=multiwell_path.absolute() / datfile,
+                verbose=verbose,
+            )
+
+
+    else:
+        datfile = "multiwell.dat"
+        write_multiwell(
+            PES_data,
+            multiwell_methods,
+            datfile=multiwell_path.absolute() / datfile,
+            verbose=verbose,
+        )
+
+        run_multiwell(
+            datfile=multiwell_path.absolute() / datfile,
+            verbose=verbose,
+        )
 
