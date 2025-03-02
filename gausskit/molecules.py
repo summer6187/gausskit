@@ -248,15 +248,14 @@ class Molecules(Atoms):
             if (self.frequencies > 0).all():
                 self._ts = False
             elif len(self.frequencies) > 1:
-                sorted_frequancies = self.frequencies.copy()
-                sorted_frequancies.sort()
-                if sorted_frequancies[0] < 0 and sorted_frequancies[1:].all() > 0:
+                sorted_frequencies = self.frequencies.copy()
+                sorted_frequencies.sort()
+                if sorted_frequencies[0] < 0 and sorted_frequencies[1:].all() > 0:
                     self._ts = True
                 else:
                     print("More than one imag freq! Please check!")
             else:
-                if sorted_frequancies[0] < 0:
-                    self._ts = True
+                self._ts = True
         # single atom have no ts
         elif len(self.get_chemical_symbols()) == 1:
             self._ts = False
