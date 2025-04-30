@@ -7,6 +7,7 @@
  bdens_command = bdens
  thermo_command = thermo
  mominert_command = mominert
+ densum_command = densum
  multiwell_command = multiwell
 
 
