@@ -23,6 +23,7 @@ def write_parsctst(
     fname:str = None,
     barrier:list[float]=[],
     Egrain="10   3000   4000   50000",
+    separable_modes:list[int]=[],
     datfile:Path = Path("parsctst.dat"),
     verbose:bool = False,
 ):
@@ -55,6 +56,24 @@ def write_parsctst(
     full_anharm_matrix = np.delete(full_anharm_matrix, img_index, axis=1)
     anharm_matrix = np.tril(full_anharm_matrix)
 
+    # remove separable modes if given
+    if separable_modes:
+        sep_harm_freq = []
+        print(f"Removing separable modes: {separable_modes}")
+        for sep_id in separable_modes:
+            sep_harm_freq.append(harm_freq[sep_id])
+            if verbose:
+                print(f"    Separable mode index: {sep_id}")
+                print(f"    Harmonic freq: {harm_freq[sep_id]}")
+                print(f"    Diagonal Anharm X matrix: {full_anharm_matrix[sep_id,sep_id]}")
+                print(f"    Full Anharm X matrix: {full_anharm_matrix[sep_id,:]}")
+
+        harm_freq = np.delete(harm_freq, separable_modes)
+        full_anharm_matrix = np.delete(full_anharm_matrix, separable_modes, axis=0)
+        full_anharm_matrix = np.delete(full_anharm_matrix, separable_modes, axis=1)
+        anharm_matrix = np.tril(full_anharm_matrix)
+        img_anharm_array = np.delete(img_anharm_array, separable_modes)
+
     # prepare inputfile
     lines = []
     lines.append(fname)
@@ -67,7 +86,16 @@ def write_parsctst(
     formated_lines = format_freq_matrix(harm_freq, anharm_matrix)
     lines += formated_lines
     lines.append(" ")
-    lines.append("0    'AMUA'")
+    lines.append(f"{len(separable_modes)}    'AMUA'")
+
+    # formating separable mode if given
+    if separable_modes:
+        sep_mode_lines = []
+        for n_index, harm_freq in enumerate(sep_harm_freq):
+            l = f"{n_index+1}   vib  {harm_freq:.4f}  0.0  1  ! Active separable mode"
+            sep_mode_lines.append(l)
+        lines += sep_mode_lines
+
     lines.append(f"{Egrain}")
     lines.append(f"'nochekstart'  {fname}.chk")
     lines.append("VPT4A")
