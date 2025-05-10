@@ -59,7 +59,7 @@ def write_parsctst(
     # remove separable modes if given
     if separable_modes:
         sep_harm_freq = []
-        print(f"Removing separable modes: {separable_modes}")
+        print(f"Setting separable modes: {separable_modes}")
         for sep_id in separable_modes:
             sep_harm_freq.append(harm_freq[sep_id])
             if verbose:

@@ -19,8 +19,10 @@ click_completion.init()
 complete_files = click.Path(exists=True)
 
 
-def finish_line():
+def finish_line(dry:bool = False):
     click.echo("=" * 80)
+    if dry:
+        click.echo("Dry run! Only generate input files!")
     click.echo("Job done! Have a nice day!")
 
 
@@ -103,14 +105,15 @@ def output(obj, directory, outfile, force):
 
 @cli.command()
 @click.argument("file", type=complete_files)
+@click.option("--dry", is_flag=True, help="Dry run, do not execute command.")
 @click.option("--verbose", is_flag=True, help="Show verbose information.")
 @click.pass_obj
-def run(obj, file, verbose):
+def run(obj, file, dry, verbose):
     config = configparser.ConfigParser()
 
     filename = Path(file).resolve()
     click.echo(f"Run this PES: {filename}")
     config.read(filename)
-    PES_parser(config, verbose=verbose)
+    PES_parser(config, dry=dry, verbose=verbose)
 
-    finish_line()
+    finish_line(dry=dry)

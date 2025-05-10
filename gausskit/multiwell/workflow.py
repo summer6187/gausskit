@@ -25,6 +25,7 @@ def run_PES_densdata(
     Egrain:str = "10   3000   4000   50000",
     if_hinderedrotor:bool = False,
     if_anharm:bool = False,
+    dry:bool = False,
     verbose:bool = True,
 ):
     # gather PES_info
@@ -74,7 +75,8 @@ def run_PES_densdata(
             datfile=densdata_path / datfile, 
             verbose=verbose
         )
-        run_densum(densdata_path / datfile, densdata_path / outfile, verbose=verbose)
+        if not dry:
+            run_densum(densdata_path / datfile, densdata_path / outfile, verbose=verbose)
 
         # 2.3 write and run thermo file for each molecules
         if "default" in thermo_temp:
@@ -90,11 +92,13 @@ def run_PES_densdata(
         )
         datfile = densdata_path.absolute() / f"{dummy_name}.therm"
         outfile = densdata_path.absolute() / f"{dummy_name}.therm.out"
-        run_thermo(datfile, outfile, verbose=verbose)
+        if not dry:
+            run_thermo(datfile, outfile, verbose=verbose)
 
         # 2.3.1 read Electronic partition function from thermo output files
-        qele = read_electronic_partition_function(outfile, verbose=verbose)
-        mol.electronic_partition_function = qele
+        if not dry:
+            qele = read_electronic_partition_function(outfile, verbose=verbose)
+            mol.electronic_partition_function = qele
 
 
     # 3 run bdens and/or parsctst if anharm
@@ -116,16 +120,25 @@ def run_PES_densdata(
                 # parsctst
                 datfile = densdata_path / f"{dummy_name}.parsctst.dat"
                 barrier = [forwards_barrier, backwards_barrier]
-                write_parsctst(mol, dummy_name, barrier, Egrain, datfile, verbose)
-                run_parsctst(datfile, verbose)
-                fix_crp_file(densdata_path / f"{dummy_name}.crp")
-                fix_crp_file(densdata_path / f"{dummy_name}.qcrp")
+                write_parsctst(
+                    mol=mol,
+                    fname=dummy_name,
+                    barrier=barrier,
+                    Egrain=Egrain,
+                    datfile=datfile,
+                    verbose=verbose
+                )
+                if not dry:
+                    run_parsctst(datfile, verbose)
+                    fix_crp_file(densdata_path / f"{dummy_name}.crp")
+                    fix_crp_file(densdata_path / f"{dummy_name}.qcrp")
 
             else:
                 # bdens
                 datfile = densdata_path / f"{dummy_name}.bdens.dat"
                 write_bdens(mol, dummy_name, Egrain, datfile, verbose)
-                run_bdens(datfile, verbose)
+                if not dry:
+                    run_bdens(datfile, verbose)
 
     # 3.1 internal hindered rotor
     # prepare hindered rot calculations
@@ -158,6 +171,7 @@ def run_thermo_workflow(
     thermo_methods:dict,
     thermo_path:Path = Path("thermo"),
     Egrain:str = "10   3000   4000   50000",
+    dry:bool = False,
     verbose:bool = False,
 ):
 
@@ -172,6 +186,7 @@ def run_thermo_workflow(
         Egrain=Egrain,
         if_hinderedrotor=if_hinderedrotor,
         if_anharm=if_anharm,
+        dry=dry,
         verbose=verbose,
     )
 
@@ -185,17 +200,18 @@ def run_thermo_workflow(
         datfile=thermo_path.absolute() / datfile,
         verbose=verbose,
     )
-
-    run_thermo(
-        datfile=thermo_path.absolute() / datfile,
-        verbose=verbose,
-    )
+    if not dry:
+        run_thermo(
+            datfile=thermo_path.absolute() / datfile,
+            verbose=verbose,
+        )
 
 def run_multiwell_workflow(
     PES_data:dict,
     multiwell_methods:dict,
     multiwell_path:Path = Path("multiwell"),
     Egrain:str = "10   3000   4000   50000",
+    dry:bool = False,
     verbose:bool = False,
 ):
 
@@ -211,6 +227,7 @@ def run_multiwell_workflow(
         Egrain=Egrain,
         if_hinderedrotor=if_hinderedrotor,
         if_anharm=if_anharm,
+        dry=dry,
         verbose=verbose,
     )
 

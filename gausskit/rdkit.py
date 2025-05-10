@@ -24,12 +24,12 @@ def atoms2rdkmol(
     try:
         rdDetermineBonds.DetermineBonds(rdkit_mol, charge=charge)
     except ValueError as err:
-        # print(f"Mol {mol} with charge {charge} show error {err}")
+        print(f"Mol {mol} with charge {charge} show error {err}")
         trail_charge = int(str(err).split()[8][1:-2])
         try:
             rdDetermineBonds.DetermineBonds(rdkit_mol, charge=trail_charge)
         except ValueError as err:
-            print(f"Mol {mol} with charge {charge} show error {err}")
+            print(f"    Mol {mol} with charge {charge} show error {err}")
 
     return rdkit_mol
 
