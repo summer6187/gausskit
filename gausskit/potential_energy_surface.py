@@ -2,12 +2,10 @@ import argparse
 from pathlib import Path
 import configparser
 import ast
-import pickle
-import json
 
 from ase.units import Hartree, kcal, mol
+from gausskit.database import load_database
 from gausskit.multiwell.workflow import run_thermo_workflow, run_multiwell_workflow
-from gausskit.molecules import Molecules
 from gausskit._defaults import trail_line
 
 
@@ -243,21 +241,9 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
         ZPE_method = PES_method["zpe"]
         anharm_method = config_getboolean(config, "Method", "anharm")
         # load database
-        filename = PES_method["database"]
+        filename = Path(PES_method["database"])
         print(f"Loading database from {filename}")
-        if filename.split(".")[-1] == "pickle":
-            with open(filename, "rb") as f:
-                database = pickle.load(f)
-        elif filename.split(".")[-1] == "json":
-            with open(filename) as f:
-                database_dict = json.load(f)
-            database = {}
-            for item in database_dict:
-                database[item] = {}
-                for method in database_dict[item]:
-                    database[item][method] = Molecules.from_dict(
-                        database_dict[item][method]
-                    )
+        database = load_database(filename)
 
     PES_methods = {
         "Eele_method": Eele_method,

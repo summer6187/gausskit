@@ -91,6 +91,50 @@ def write_database(database: dict, outfile: Path = Path("database.json")):
         f.write(dumped)
     return
 
+def load_database(filename: Path) -> dict:
+    if isinstance(filename, str):
+        filename = Path(filename)
+
+    if filename.suffix == ".pickle":
+        with open(filename, "rb") as f:
+            database = pickle.load(f)
+
+    elif filename.suffix == ".json":
+        with open(filename) as f:
+            database_dict = json.load(f)
+        database = {}
+        for item in database_dict:
+            database[item] = {}
+            for method in database_dict[item]:
+                database[item][method] = Molecules.from_dict(
+                    database_dict[item][method]
+                )
+    else:
+        print(f"Warning! database file type Unknown. Only .pickle or .json supported.")
+        database = {}
+
+    return database
+
+def get_name_info(ds: dict, name: str):
+    name_info_list = []
+    for _method in ds[name].keys():
+        method_info = _method
+        if ds[name][_method].ts:
+            method_info += "_ts"
+        if ds[name][_method].frequencies.any():
+            method_info += "_freq"
+        name_info_list.append(method_info)
+
+    return name_info_list
+
+def show_database(ds: dict):
+    """
+    Formated printing database information
+    """
+    for name in ds.keys():
+        name_info = get_name_info(ds, name)
+        print(f"{name:30}: {name_info}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

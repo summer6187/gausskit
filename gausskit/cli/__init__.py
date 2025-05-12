@@ -1,19 +1,15 @@
 """CLI for gausskit with click"""
 
 from pathlib import Path
-import os
 import pickle
 
 import click
 import click_completion
 import configparser
-import json
 
 from gausskit import __version__ as gausskit_version
-from gausskit.database import get_name_info
-from gausskit.database import append_species, write_database
+from gausskit.database import append_species, write_database, load_database, show_database
 from gausskit.potential_energy_surface import PES_parser
-from gausskit.molecules import Molecules
 
 click_completion.init()
 complete_files = click.Path(exists=True)
@@ -41,24 +37,10 @@ def info(obj, file):
     filename = Path(file).resolve()
     # load database.pickle file
     click.echo(f"Dataset summary for {filename}:")
-    if filename.suffix == ".pickle":
-        with open(filename, "rb") as f:
-            ds = pickle.load(f)
-    elif filename.suffix == ".json":
-        with open(filename) as f:
-            database_dict = json.load(f)
-        database = {}
-        for item in database_dict:
-            database[item] = {}
-            for method in database_dict[item]:
-                database[item][method] = Molecules.from_dict(
-                    database_dict[item][method]
-                )
-        ds = database
+    ds = load_database(filename)
 
-    for name in ds.keys():
-        name_info = get_name_info(ds, name)
-        print(f"{name:30}: {name_info}")
+    # formated printing of database information
+    show_database(ds)
 
     finish_line()
 
