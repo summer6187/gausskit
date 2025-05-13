@@ -16,6 +16,7 @@ def get_degrees_of_freedom_lines(
     mol:Molecules,
     krot:float,
     ad_rot:float,
+    if_ktools:bool = False,
 ):
     # get all non imaginary frequencies
     freq = mol.frequencies
@@ -31,14 +32,20 @@ def get_degrees_of_freedom_lines(
     for i in range(1, len(nonimg_freq)+1):
         lines.append(f" {i:3d}   {rottype:6} {nonimg_freq[i-1]:12.4f}   0.0   1")
 
-    rottype = "qrot " if (krot < 11.0) else "rot  "
+    if if_ktools:
+        rottype = "kro"
+    else:
+        rottype = "qrot " if (krot < 11.0) else "rot  "
     if np.abs(krot) > 1e-12:
         i += 1
         lines.append(
             f" {i:3d}   {rottype:6} {krot:12.4f}   1.0   1   ! K-rotor"
         )
 
-    rottype = "qrot " if (ad_rot < 11.0) else "rot  "
+    if if_ktools:
+        rottype = "jro"
+    else:
+        rottype = "qrot " if (ad_rot < 11.0) else "rot  "
     if np.abs(ad_rot) > 1e-12:
         i += 1
         lines.append(

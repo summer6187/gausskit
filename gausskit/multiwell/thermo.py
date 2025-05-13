@@ -32,6 +32,7 @@ def get_thermo_lines(
     mol_type:Optional[str] = None,
     forwards_barrier:float = 0.0,
     backwards_barrier:float = 0.0,
+    if_ktools:float = False,
     if_tunneling:bool = False,
     if_anharm:bool = False,
     if_hinderedrotor:bool = False,
@@ -59,6 +60,10 @@ def get_thermo_lines(
             lines.append(f"reac    {dummy_name}    {forwards_barrier}")
 
     lines.append(f"{mol.get_chemical_formula()}")
+    if if_ktools:
+        lines.append("1. Comment line")
+        lines.append("2. Comment line")
+        lines.append("3. Comment line")
     lines.append(f"{mol.external_symmetry_number}   {mol.optical_isomers}   1")
     lines.append(f" {0.0:<10} {mol.multiplicity}")
 
@@ -93,7 +98,10 @@ def get_thermo_lines(
 
         # add k-rotor and adiabatic rotor line
         # additional mode number begins with 2
-        rottype = "qrot " if (krot < 11.0) else "rot  "
+        if if_ktools:
+            rottype = "kro"
+        else:
+            rottype = "qrot " if (krot < 11.0) else "rot  "
         n_dof = 1
         if np.abs(krot) > 1e-12:
             n_dof += 1
@@ -101,7 +109,10 @@ def get_thermo_lines(
                 f" {n_dof:3d}   {rottype:6} {krot:12.4f}   1.0   1   ! K-rotor"
             )
 
-        rottype = "qrot " if (ad_rot < 11.0) else "rot  "
+        if if_ktools:
+            rottype = "jro"
+        else:
+            rottype = "qrot " if (ad_rot < 11.0) else "rot  "
         if np.abs(ad_rot) > 1e-12:
             n_dof += 1
             lines.append(
@@ -119,7 +130,7 @@ def get_thermo_lines(
         if np.abs(ad_rot) > 1e-12:
             total_dof += 1
         lines.append(f"{total_dof}   HAR   AMUA")
-        dof_lines = get_degrees_of_freedom_lines(mol, krot, ad_rot)
+        dof_lines = get_degrees_of_freedom_lines(mol, krot, ad_rot, if_ktools=if_ktools)
 
         # if thermo_hinderedrotor and mol has hindered rotor
         # replace the selected vibration mode with the hindered rotor DOF

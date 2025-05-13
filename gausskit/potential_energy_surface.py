@@ -258,9 +258,16 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
         Ktools_method = config_section_map(config, "Ktools")
         ktools_list = list(Ktools_method["pes"].split())
         ktools_dir = Ktools_method["dir"]
-        ktools_bonds = Ktools_method["bonds"]
         ktools_temperatures = Ktools_method["temperatures"]
-        ktools_trial_modes = [int(n) for n in Ktools_method["trial_modes"].split()]
+        if "trail_modes" in Ktools_method:
+            ktools_trial_modes = [int(n) for n in Ktools_method["trial_modes"].split()]
+        else:
+            ktools_trial_modes = []
+
+        if "bonds" in Ktools_method:
+            ktools_bonds = [i for i in Ktools_method["bonds"].split()]
+        else:
+            ktools_bonds = []
 
         ktools_methods = {
             "bonds": ktools_bonds,

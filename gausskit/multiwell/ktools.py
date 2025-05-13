@@ -14,6 +14,7 @@ def write_ktools(
 ):
 
     # Parse thermo_methods information
+    bonds = thermo_methods["bonds"]
     trial_modes = thermo_methods["trial_modes"]
     if_tunneling = thermo_methods["tunneling"]
     if_hinderedrotor = thermo_methods["hinderedrotor"]
@@ -23,20 +24,19 @@ def write_ktools(
     thermo_pressure = thermo_methods["pressures"]
 
     # remove trial modes
-    # make sure the number of trial modes matches trial items
-    trial_items = [n for n in PES_data if str.isnumeric(n)]
-    print(trial_items)
-    print(trial_modes)
-    if len(trial_modes) != len(trial_items):
-        print(f"The number of trial_modes doesn't match trial items!")
-        print(f"Trial modes won't be used!")
+    if trial_modes:
+        # make sure the number of trial modes matches trial items
+        trial_items = [n for n in PES_data if str.isnumeric(n)]
+        if len(trial_modes) != len(trial_items):
+            print(f"The number of trial_modes doesn't match trial items!")
+            print(f"Trial modes won't be used!")
 
-    for n, (PES_num, trial_mode) in enumerate(zip(trial_items, trial_modes)):
-        for item in PES_data[PES_num]["PES_items"]:
-            Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
-            print(f"Remove {trial_mode} in {item} {Mol.frequencies[trial_mode]}")
-            Mol.frequencies = np.delete(Mol.frequencies, trial_mode)
-            PES_data[PES_num]["PES_items"][item]["Mol"] = Mol
+        for n, (PES_num, trial_mode) in enumerate(zip(trial_items, trial_modes)):
+            for item in PES_data[PES_num]["PES_items"]:
+                Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
+                print(f"Remove {trial_mode} in {item} {Mol.frequencies[trial_mode]}")
+                Mol.frequencies = np.delete(Mol.frequencies, trial_mode)
+                PES_data[PES_num]["PES_items"][item]["Mol"] = Mol
 
     if "default" in thermo_temp:
         temp = "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000"
@@ -70,6 +70,7 @@ def write_ktools(
                 mol_type = "ctst"
             item_mol_type.append(mol_type)
             forwards_barrier = PES_data[PES_num]["PES_energy"]
+            forwards_barrier = f"{forwards_barrier}   {bonds[n]}"
             item_barrier.append(forwards_barrier)
             # break
 
@@ -96,6 +97,7 @@ def write_ktools(
             mol_type = mol_type,
             forwards_barrier = barrier,
             backwards_barrier = 0,
+            if_ktools = True,
             if_tunneling = if_tunneling,
             if_anharm = if_anharm,
             if_hinderedrotor = if_hinderedrotor,
