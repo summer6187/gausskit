@@ -40,7 +40,7 @@ def get_thermo_lines(
     lines = []
 
     if mol_type is not None:
-        lines.append(f"{mol_type}    {dummy_name}    0.0")
+        lines.append(f"{mol_type}    {dummy_name}    {forwards_barrier}")
     else:
         if mol.ts:
             # if no tunneling, set img_freq and backwards_barrier to 0
@@ -56,7 +56,7 @@ def get_thermo_lines(
                 f"ctst    {dummy_name}    {forwards_barrier}   {-img_freq}   {backwards_barrier}"
             )
         else:
-            lines.append(f"reac    {dummy_name}    0.0")
+            lines.append(f"reac    {dummy_name}    {forwards_barrier}")
 
     lines.append(f"{mol.get_chemical_formula()}")
     lines.append(f"{mol.external_symmetry_number}   {mol.optical_isomers}   1")

@@ -5,7 +5,7 @@ import ast
 
 from ase.units import Hartree, kcal, mol
 from gausskit.database import load_database
-from gausskit.multiwell.workflow import run_thermo_workflow, run_multiwell_workflow
+from gausskit.multiwell.workflow import run_thermo_workflow, run_multiwell_workflow, run_ktools_workflow
 from gausskit._defaults import trail_line
 
 
@@ -251,6 +251,26 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
         "anharm_method": anharm_method,
     }
 
+    # set Ktools Method
+    calc_ktools = False
+    if "Ktools" in config.sections():
+        calc_ktools = True
+        Ktools_method = config_section_map(config, "Ktools")
+        ktools_list = list(Ktools_method["pes"].split())
+        ktools_dir = Ktools_method["dir"]
+        ktools_bonds = Ktools_method["bonds"]
+        ktools_temperatures = Ktools_method["temperatures"]
+
+        ktools_methods = {
+            "bonds": ktools_bonds,
+            "temperatures": ktools_temperatures,
+            "tunneling": False,
+            "hinderedrotor": False,
+            "anharm": False,
+            "adj_barrier": False,
+            "pressures": "default",
+        }
+
     # set Thermo Method
     calc_thermo = False
     if "Thermo" in config.sections():
@@ -343,12 +363,24 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
             PES_datasets[section] = {}
             PES_dict = config_section_map(config, section)
             PES_num_list = PES_dict.keys()
-            PES_num_list = [int(num) for num in PES_num_list]
-            PES_num_list.sort()
             PES_data = get_PES_data(
                 database, PES_dict, PES_num_list, PES_methods, verbose=True
             )
             PES_datasets[section] = PES_data
+
+    # ktools calc
+    if calc_ktools:
+        print("-----------ktools calculation-----------")
+        for _ktools_PES in ktools_list:
+            PES_data = PES_datasets[_ktools_PES]
+            for PES_num in PES_data:
+                PES_data[PES_num]["final_ts"] = False
+
+            # this is a temporary hack for running
+            PES_data["reac"]["final_ts"] = True
+            ktools_path = Path(ktools_dir) / f"ktools_{_ktools_PES}"
+            print("ktools calculation of", _ktools_PES)
+            run_ktools_workflow(PES_data, ktools_methods, ktools_path, dry=dry, verbose=verbose)
 
     # thermo calc
     if calc_thermo:

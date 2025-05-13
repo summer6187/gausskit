@@ -7,6 +7,7 @@ from gausskit.multiwell.sctst import (
     write_parsctst, write_bdens, run_parsctst, run_bdens, fix_crp_file,
 )
 from gausskit.multiwell.densum import write_densum, run_densum
+from gausskit.multiwell.ktools import write_ktools
 from gausskit.multiwell.thermo import (
     read_electronic_partition_function, write_thermo, write_single_thermo, run_thermo
 )
@@ -165,6 +166,42 @@ def run_PES_densdata(
                     hindrot_item_reduced_mominert_dict[item] = reduced_moment_of_inertia
 
     return hindrot_item_reduced_mominert_dict
+
+def run_ktools_workflow(
+    PES_data:dict,
+    ktools_methods:dict,
+    ktools_path:Path = Path("ktools"),
+    Egrain:str = "10   3000   4000   50000",
+    dry:bool = False,
+    verbose:bool = False,
+):
+
+    # run density of state data
+    hindrot_item_reduced_mominert_dict = run_PES_densdata(
+        PES_data,
+        densdata_path=ktools_path.absolute(),
+        thermo_temp=ktools_methods["temperatures"],
+        Egrain=Egrain,
+        if_anharm=False,
+        dry=dry,
+        verbose=verbose,
+    )
+
+    # prepare thermo input file reaction.dat
+    datfile = "ktools.dat"
+    write_ktools(
+        PES_data,
+        ktools_methods,
+        thermo_path=ktools_path.absolute(),
+        hindrot_item_reduced_mominert_dict=hindrot_item_reduced_mominert_dict,
+        datfile=ktools_path.absolute() / datfile,
+        verbose=verbose,
+    )
+    # if not dry:
+    #     run_ktools(
+    #         datfile=ktools_path.absolute() / datfile,
+    #         verbose=verbose,
+    #     )
 
 def run_thermo_workflow(
     PES_data:dict,

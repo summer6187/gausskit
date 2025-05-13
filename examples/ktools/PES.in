@@ -1,0 +1,20 @@
+[Method]
+Eele: M062X
+ZPE: M062X
+Anharm: False
+database: database.json
+
+[Ktools]
+PES: PES_1
+dir: ./
+bonds: 1.5 2.5 3.5
+temperatures: default
+
+[PES_1]
+reac: _OHRSide_IM_Scan_10
+1: _OHRSide_IM_Scan_11
+2: _OHRSide_IM_Scan_12
+3: _OHRSide_IM_Scan_13
+4: _OHRSide_IM_Scan_14
+prod: _OHRSide_IM_Scan_15
+
