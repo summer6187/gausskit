@@ -134,7 +134,12 @@ def read_harm_freq(filename):
                 print("Frequency parser failed!")
                 print(line_split[i])
 
-        harm_freq_list_clean.append(float(line_split[i]))
+        try:
+            freq = float(line_split[i])
+        except ValueError:
+            freq = float(line[30:38])
+
+        harm_freq_list_clean.append(freq)
 
     return harm_freq_list_clean
 
