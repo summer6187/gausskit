@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import numpy as np
 
 from gausskit.multiwell.thermo import get_thermo_lines, get_thermo_head_lines
 
@@ -13,12 +14,29 @@ def write_ktools(
 ):
 
     # Parse thermo_methods information
+    trial_modes = thermo_methods["trial_modes"]
     if_tunneling = thermo_methods["tunneling"]
     if_hinderedrotor = thermo_methods["hinderedrotor"]
     if_anharm = thermo_methods["anharm"]
     thermo_adj_barrier = thermo_methods["adj_barrier"]
     thermo_temp = thermo_methods["temperatures"]
     thermo_pressure = thermo_methods["pressures"]
+
+    # remove trial modes
+    # make sure the number of trial modes matches trial items
+    trial_items = [n for n in PES_data if str.isnumeric(n)]
+    print(trial_items)
+    print(trial_modes)
+    if len(trial_modes) != len(trial_items):
+        print(f"The number of trial_modes doesn't match trial items!")
+        print(f"Trial modes won't be used!")
+
+    for n, (PES_num, trial_mode) in enumerate(zip(trial_items, trial_modes)):
+        for item in PES_data[PES_num]["PES_items"]:
+            Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
+            print(f"Remove {trial_mode} in {item} {Mol.frequencies[trial_mode]}")
+            Mol.frequencies = np.delete(Mol.frequencies, trial_mode)
+            PES_data[PES_num]["PES_items"][item]["Mol"] = Mol
 
     if "default" in thermo_temp:
         temp = "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000"
@@ -36,6 +54,8 @@ def write_ktools(
     item_mol_name_list = []
     # item_mol_type: reac, None, None, prod
     item_mol_type = []
+    # item_barrier
+    item_barrier = []
     # item_Mol_list: 3 Molecules objects
     item_Mol_list = []
     for n, PES_num in enumerate(PES_data):
@@ -47,12 +67,10 @@ def write_ktools(
             if PES_num.lower() in ["reac", "prod"]:
                 mol_type = PES_num.lower()
             else:
-                mol_type = None
+                mol_type = "ctst"
             item_mol_type.append(mol_type)
-        if PES_data[PES_num]["final_ts"] == True:
             forwards_barrier = PES_data[PES_num]["PES_energy"]
-            reverse_PES_num = list(PES_data.keys())[n + 1]
-            backwards_barrier = PES_data[reverse_PES_num]["reverse"]
+            item_barrier.append(forwards_barrier)
             # break
 
     # prepare hindered rot calculations
@@ -68,7 +86,7 @@ def write_ktools(
 
     reaction_lines = get_thermo_head_lines(temp, len(item_list))
 
-    for n, (dummy_name, mol_type, Mol) in enumerate(zip(item_list, item_mol_type, item_Mol_list)):
+    for n, (dummy_name, mol_type, Mol, barrier) in enumerate(zip(item_list, item_mol_type, item_Mol_list, item_barrier)):
         mol = Mol
 
         lines = get_thermo_lines(
@@ -76,8 +94,8 @@ def write_ktools(
             dummy_name = dummy_name,
             thermo_path = thermo_path,
             mol_type = mol_type,
-            forwards_barrier = forwards_barrier,
-            backwards_barrier = backwards_barrier,
+            forwards_barrier = barrier,
+            backwards_barrier = 0,
             if_tunneling = if_tunneling,
             if_anharm = if_anharm,
             if_hinderedrotor = if_hinderedrotor,

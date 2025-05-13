@@ -260,10 +260,12 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
         ktools_dir = Ktools_method["dir"]
         ktools_bonds = Ktools_method["bonds"]
         ktools_temperatures = Ktools_method["temperatures"]
+        ktools_trial_modes = [int(n) for n in Ktools_method["trial_modes"].split()]
 
         ktools_methods = {
             "bonds": ktools_bonds,
             "temperatures": ktools_temperatures,
+            "trial_modes": ktools_trial_modes,
             "tunneling": False,
             "hinderedrotor": False,
             "anharm": False,

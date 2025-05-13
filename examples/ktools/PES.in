@@ -8,6 +8,7 @@ database: database.json
 PES: PES_1
 dir: ./
 bonds: 1.5 2.5 3.5
+trial_modes: 7 7 7 7
 temperatures: default
 
 [PES_1]
