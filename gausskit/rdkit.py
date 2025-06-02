@@ -25,7 +25,16 @@ def atoms2rdkmol(
         rdDetermineBonds.DetermineBonds(rdkit_mol, charge=charge)
     except ValueError as err:
         print(f"Mol {mol} with charge {charge} show error {err}")
-        trail_charge = int(str(err).split()[8][1:-2])
+        try:
+            trail_charge = int(str(err).split()[8][1:-2])
+        except ValueError as err:
+            print(f"!!! Error information problem! {str(err)}")
+            print(f"!!! optical_isomers of this molecules {mol} may be wrong!")
+            print("!!! Please double check the input data!!!")
+            print("!!! You can manually change database.json file to update this information:")
+            print("!!!    Change the number of this line if you need \"optical_isomers\": 1,  ")
+
+            trail_charge = 0
         try:
             rdDetermineBonds.DetermineBonds(rdkit_mol, charge=trail_charge)
         except ValueError as err:
