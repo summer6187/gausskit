@@ -183,14 +183,17 @@ def write_thermo(
     item_mol_name_list = []
     # item_Mol_list: 3 Molecules objects
     item_Mol_list = []
+    # forward barrier list: 0.0, 1.78
+    forward_barrier_list = []
     for n, PES_num in enumerate(PES_data):
         for item in PES_data[PES_num]["PES_items"]:
             item_list.append(item)
             item_mol_name_list.append(PES_data[PES_num]["PES_items"][item]["mol_name"])
             Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
             item_Mol_list.append(Mol)
+        forwards_barrier = PES_data[PES_num]["PES_energy"]
+        forward_barrier_list.append(forwards_barrier)
         if PES_data[PES_num]["final_ts"] == True:
-            forwards_barrier = PES_data[PES_num]["PES_energy"]
             reverse_PES_num = list(PES_data.keys())[n + 1]
             backwards_barrier = PES_data[reverse_PES_num]["reverse"]
             break
@@ -208,7 +211,7 @@ def write_thermo(
 
     reaction_lines = get_thermo_head_lines(temp, len(item_list))
 
-    for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
+    for n, (dummy_name, Mol, forwards_barrier) in enumerate(zip(item_list, item_Mol_list, forward_barrier_list)):
         mol = Mol
 
         lines = get_thermo_lines(
