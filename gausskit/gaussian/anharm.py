@@ -1,38 +1,11 @@
 import numpy as np
 import re
-import sys
 
 _re_freq = re.compile(r"-?[0-9]*\.[0-9]")
 
-
-def read_anharm_matrix(filename):
-    """
-    This function takes a gaussian log file with anharmonic analysis
-    filename: example.log
-    this function return a lower triangular matrix numpy.array
-    return anharm_matrix: numpy.array (in cm-1)
-    """
-    with open(filename) as f:
-        found_anharm_matrix = False
-        append_bool = False
-        anharm_matrix_list = []
-        lines = f.readlines()
-        for line in lines:
-            if "Total Anharmonic X Matrix" in line:
-                found_anharm_matrix = True
-                append_bool = True
-            if found_anharm_matrix == True:
-                if "============================================" in line:
-                    append_bool = False
-                    break
-
-            if append_bool == True:
-                line = re.sub(r"D", "E", line)
-                anharm_matrix_list.append(line)
-
-    anharm_matrix_list = anharm_matrix_list[2:]
+def parse_anharm_matrix_lines(anharm_matrix_lines:list):
     anharm_matrix_ll = []
-    for line in anharm_matrix_list:
+    for line in anharm_matrix_lines:
         line_split = line.split()
         if line_split != []:
             anharm_matrix_ll.append(line_split)
@@ -78,6 +51,137 @@ def read_anharm_matrix(filename):
 
     return anharm_matrix
 
+def read_anharm_x_matrix(filename):
+    """
+    This function takes a gaussian log file with anharmonic analysis
+    filename: example.log
+    this function return a lower triangular matrix numpy.array
+    return anharm_matrix: numpy.array (in cm-1)
+    """
+    with open(filename) as f:
+        found_anharm_matrix = False
+        append_bool = False
+        anharm_matrix_lines = []
+        lines = f.readlines()
+        for line in lines:
+            if "Total Anharmonic X Matrix" in line:
+                found_anharm_matrix = True
+                append_bool = True
+            if found_anharm_matrix == True:
+                if "============================================" in line:
+                    append_bool = False
+                    break
+
+            if append_bool == True:
+                line = re.sub(r"D", "E", line)
+                anharm_matrix_lines.append(line)
+    anharm_matrix_lines = anharm_matrix_lines[2:]
+    return parse_anharm_matrix_lines(anharm_matrix_lines)
+
+def read_anharm_xl_matrix(filename):
+    """
+    This function read anharmonic Xl matrix where Fermi resonance exists
+    """
+    with open(filename) as f:
+        found_anharm_matrix = False
+        append_bool = False
+        anharm_matrix_lines = []
+        lines = f.readlines()
+        for line in lines:
+            if "Total Anharmonic Xl Matrix" in line:
+                found_anharm_matrix = True
+                append_bool = True
+            if found_anharm_matrix == True:
+                if "============================================" in line:
+                    append_bool = False
+                    break
+
+            if append_bool == True:
+                line = re.sub(r"D", "E", line)
+                anharm_matrix_lines.append(line)
+    anharm_matrix_lines = anharm_matrix_lines[2:]
+    return parse_anharm_matrix_lines(anharm_matrix_lines)
+
+def read_full_anharm_matrix(filename):
+    """
+    This function reads Fundamental Bands information,
+    and recover full anharmonic matrix from
+    Anharmonic X matrix and Anharmonic Xl matrix
+    """
+    anharm_matrix = read_anharm_x_matrix(filename)
+    anharm_xl_matrix = read_anharm_xl_matrix(filename)
+    # anharm_matrix += anharm_xl_matrix
+
+    with open(filename) as f:
+        found_harm_freq = False
+        append_bool = False
+        harm_freq_lines = []
+        lines = f.readlines()
+        for line in lines:
+            if "Fundamental Bands" in line:
+                found_harm_freq = True
+            if found_harm_freq == True:
+                append_bool = True
+                if "Overtones" in line:
+                    append_bool = False
+                    break
+
+            if append_bool == True:
+                harm_freq_lines.append(line)
+
+    f_index_list = []
+    for line in harm_freq_lines[3:-1]:
+        line_split = line.split()
+        i = line_split.index("active") - 1
+
+        try:
+            f_index = int(line_split[i].split("(")[0])
+        except ValueError as err:
+            exit(f"Parsing Fundamental Bands {filename} shows {err}")
+
+        f_index_list.append(f_index)
+
+    full_anharm_matrix = np.zeros((len(f_index_list), len(f_index_list)))
+
+    used_i_list = []
+    for ni, i in enumerate(f_index_list):
+        used_j_list = []
+        for nj, j in enumerate(f_index_list):
+            if i in used_i_list and j in used_j_list:
+                full_anharm_matrix[ni,nj] = anharm_matrix[i-1,j-1]
+            else:
+                full_anharm_matrix[ni,nj] = anharm_matrix[i-1,j-1]
+            used_j_list.append(j)
+        used_i_list.append(i)
+    return full_anharm_matrix
+
+def read_anharm_matrix(filename):
+    """
+    This function takes a gaussian log file with anharmonic analysis
+    filename: example.log
+    this function return a full anharmonic matrix numpy.array
+    return anharm_matrix: numpy.array (in cm-1)
+    """
+    with open(filename) as f:
+        found_anharm_x_matrix = False
+        found_anharm_xl_matrix = False
+        lines = f.readlines()
+        for line in lines:
+            if "Total Anharmonic X Matrix" in line:
+                found_anharm_x_matrix = True
+            if "Total Anharmonic Xl Matrix" in line:
+                found_anharm_xl_matrix = True
+                break
+
+    if found_anharm_x_matrix:
+        if found_anharm_xl_matrix:
+            anharm_matrix = read_full_anharm_matrix(filename)
+        else:
+            anharm_matrix = read_anharm_x_matrix(filename)
+        return anharm_matrix
+    else:
+        print(f"Anharmonic X Matrix not found in {filename}!")
+
 
 def format_anharm_matrix(anharm_matrix):
     """
@@ -110,8 +214,8 @@ def read_harm_freq(filename):
         for line in lines:
             if "Fundamental Bands" in line:
                 found_harm_freq = True
-                append_bool = True
             if found_harm_freq == True:
+                append_bool = True
                 if "Overtones" in line:
                     append_bool = False
                     break
