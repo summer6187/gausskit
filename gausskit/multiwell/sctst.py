@@ -128,9 +128,9 @@ def write_parsctst(
 
 def write_bdens(
     mol:Molecules,
-    fname:str = None,
+    fname:str = "",
     Egrain="10   3000   4000   50000",
-    datfile:Path = Path("parsctst.dat"),
+    datfile:Path = Path("bdens.dat"),
     verbose:bool = False,
 ):
     harm_freq = mol.frequencies
