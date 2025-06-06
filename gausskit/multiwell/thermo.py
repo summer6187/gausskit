@@ -191,8 +191,8 @@ def write_thermo(
             item_mol_name_list.append(PES_data[PES_num]["PES_items"][item]["mol_name"])
             Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
             item_Mol_list.append(Mol)
-        forwards_barrier = PES_data[PES_num]["PES_energy"]
-        forward_barrier_list.append(forwards_barrier)
+            forwards_barrier = PES_data[PES_num]["PES_energy"]
+            forward_barrier_list.append(forwards_barrier)
         if PES_data[PES_num]["final_ts"] == True:
             reverse_PES_num = list(PES_data.keys())[n + 1]
             backwards_barrier = PES_data[reverse_PES_num]["reverse"]
