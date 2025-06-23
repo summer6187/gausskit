@@ -17,3 +17,5 @@ colliders = {
 }
 
 trail_line = "50  'COLL'  5000     'THERMAL'   1   3   0."
+
+bdens_setting = "best   man   10000"

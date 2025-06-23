@@ -9,6 +9,7 @@ import numpy as np
 from gausskit.molecules import Molecules
 from gausskit.settings import Configuration
 from gausskit.gaussian.anharm import format_freq_matrix
+from gausskit._defaults import bdens_setting
 
 config = Configuration()
 
@@ -149,7 +150,7 @@ def write_bdens(
     lines.append(" ")
     lines.append("0    'AMUA'")
     lines.append(" ")
-    lines.append(f'{Egrain}   good  auto   450000. ')
+    lines.append(f'{Egrain}  {bdens_setting} ')
     lines.append(f"'nochekstart'  {fname}.chk")
     lines.append(" ")
 
