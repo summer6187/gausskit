@@ -70,8 +70,7 @@ def write_ktools(
                 mol_type = "ctst"
             item_mol_type.append(mol_type)
             forwards_barrier = PES_data[PES_num]["PES_energy"]
-            forwards_barrier = f"{forwards_barrier}   {bonds[n]}"
-            item_barrier.append(forwards_barrier)
+            item_barrier.append(f"{forwards_barrier:.4f}   {bonds[n]}")
             # break
 
     # prepare hindered rot calculations

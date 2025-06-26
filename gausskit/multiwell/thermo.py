@@ -41,7 +41,7 @@ def get_thermo_lines(
     lines = []
 
     if mol_type is not None:
-        lines.append(f"{mol_type}    {dummy_name}    {forwards_barrier}")
+        lines.append(f"{mol_type}    {dummy_name}    {forwards_barrier:.4f}")
     else:
         if mol.ts:
             # if no tunneling, set img_freq and backwards_barrier to 0
@@ -54,10 +54,10 @@ def get_thermo_lines(
                 assert len(img_freq_list) == 1, f"Something wrong with img frequency {img_freq_list}"
                 img_freq = img_freq_list[0]
             lines.append(
-                f"ctst    {dummy_name}    {forwards_barrier}   {-img_freq}   {backwards_barrier}"
+                f"ctst    {dummy_name}    {forwards_barrier:.4f}   {-img_freq:.4f}   {backwards_barrier:.4f}"
             )
         else:
-            lines.append(f"reac    {dummy_name}    {forwards_barrier}")
+            lines.append(f"reac    {dummy_name}    {forwards_barrier:.4f}")
 
     lines.append(f"{mol.get_chemical_formula()}")
     if if_ktools:
@@ -184,7 +184,7 @@ def write_thermo(
     # item_Mol_list: 3 Molecules objects
     item_Mol_list = []
     # forward barrier list: 0.0, 1.78
-    forward_barrier_list = []
+    forwards_barrier_list = []
     for n, PES_num in enumerate(PES_data):
         for item in PES_data[PES_num]["PES_items"]:
             item_list.append(item)
@@ -192,7 +192,7 @@ def write_thermo(
             Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
             item_Mol_list.append(Mol)
             forwards_barrier = PES_data[PES_num]["PES_energy"]
-            forward_barrier_list.append(forwards_barrier)
+            forwards_barrier_list.append(forwards_barrier)
         if PES_data[PES_num]["final_ts"] == True:
             reverse_PES_num = list(PES_data.keys())[n + 1]
             backwards_barrier = PES_data[reverse_PES_num]["reverse"]
@@ -211,7 +211,7 @@ def write_thermo(
 
     reaction_lines = get_thermo_head_lines(temp, len(item_list))
 
-    for n, (dummy_name, Mol, forwards_barrier) in enumerate(zip(item_list, item_Mol_list, forward_barrier_list)):
+    for n, (dummy_name, Mol, forwards_barrier) in enumerate(zip(item_list, item_Mol_list, forwards_barrier_list)):
         mol = Mol
 
         lines = get_thermo_lines(
