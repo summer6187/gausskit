@@ -77,7 +77,7 @@ class Molecules(Atoms):
     @property
     def charge(self):
         """return charge"""
-        if self._charge == None:
+        if self._charge is None:
             print("charge is not set")
         return self._charge
 
@@ -88,7 +88,7 @@ class Molecules(Atoms):
     @property
     def multiplicity(self):
         """return multiplicity"""
-        if self._multiplicity == None:
+        if self._multiplicity is None:
             print("multiplicity is not set")
         return self._multiplicity
 
@@ -99,7 +99,7 @@ class Molecules(Atoms):
     @property
     def electronic_energy(self):
         """return electronic energy (Eele)"""
-        if self._electronic_energy == None:
+        if self._electronic_energy is None:
             print("electronic energy (Eele) is not set")
         return self._electronic_energy
 
@@ -110,7 +110,7 @@ class Molecules(Atoms):
     @property
     def external_symmetry_number(self):
         """return external_symmetry_number"""
-        if self._external_symmetry_number == None:
+        if self._external_symmetry_number is None:
             print("External Symmetry Number is not set")
         return self._external_symmetry_number
 
@@ -121,7 +121,7 @@ class Molecules(Atoms):
     @property
     def krotor(self) -> float:
         """return k-rotor rotational parameters"""
-        if self._krotor == None:
+        if self._krotor is None:
             print("k-rotor rotational parameters is not set")
         return self._krotor
 
@@ -132,7 +132,7 @@ class Molecules(Atoms):
     @property
     def ad_rotor(self) -> float:
         """return 2D adiabatic rotor rotational parameters"""
-        if self._ad_rotor == None:
+        if self._ad_rotor is None:
             print("2D adiabatic rotor rotational parameters is not set")
         return self._ad_rotor
 
@@ -143,7 +143,7 @@ class Molecules(Atoms):
     @property
     def optical_isomers(self) -> int:
         """return number of optical isomers"""
-        if self._optical_isomers == None:
+        if self._optical_isomers is None:
             self.set_optical_isomers()
         return self._optical_isomers
 
@@ -153,7 +153,7 @@ class Molecules(Atoms):
     @property
     def electronic_partition_function(self) -> float:
         """return electronic partition function"""
-        if self._electronic_partition_function == None:
+        if self._electronic_partition_function is None:
             print("electronic_partition_function is not set")
         return self._electronic_partition_function
 
@@ -164,7 +164,7 @@ class Molecules(Atoms):
     @property
     def zpe(self):
         """return zero point energy (ZPE)"""
-        if self._zpe == None:
+        if self._zpe is None:
             print("zero point energy (ZPE) is not set")
         return self._zpe
 
@@ -175,7 +175,7 @@ class Molecules(Atoms):
     @property
     def anharm_zpe(self):
         """return anharmonic zero potential energy"""
-        if self._anharm_zpe == None:
+        if self._anharm_zpe is None:
             print("anharmonic zero point energy is not set")
         return self._anharm_zpe
 
@@ -186,7 +186,7 @@ class Molecules(Atoms):
     @property
     def anharm_matrix(self):
         """return anharmonic X matrix"""
-        if type(self._anharm_X_matrix) == type(None):
+        if type(self._anharm_X_matrix) is type(None):
             print("anharmonic X matrix is not set")
         return self._anharm_X_matrix
 
@@ -215,7 +215,7 @@ class Molecules(Atoms):
     @property
     def method(self):
         """return method, or functional"""
-        if self._method == None:
+        if self._method is None:
             print("method is not set")
         return self._method
 
@@ -226,14 +226,14 @@ class Molecules(Atoms):
     @property
     def basis(self):
         """return basis sets"""
-        if self._basis == None:
+        if self._basis is None:
             print("basis sets are not set")
         return self._basis
 
     @property
     def name(self):
         """return name"""
-        if self._name == None:
+        if self._name is None:
             print("Name is not set")
         return self._name
 
@@ -265,7 +265,7 @@ class Molecules(Atoms):
     @property
     def ts(self):
         """return if calculation is transition state"""
-        if self._ts == None:
+        if self._ts is None:
             self.set_ts()
         return self._ts
 
@@ -273,7 +273,7 @@ class Molecules(Atoms):
     def from_log(cls, filename):
 
         parameters = read_log_parameters(filename)
-        if parameters == None:
+        if parameters is None:
             return cls()
 
         anharm = parameters["anharm"]
@@ -301,7 +301,7 @@ class Molecules(Atoms):
             positions=positions,
         )
 
-        if energy == None:
+        if energy is None:
             return mol
 
         # set charge and multiplicity

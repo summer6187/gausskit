@@ -35,7 +35,7 @@ def config_getboolean(config, section, option):
 def match_method(item_method_list, method):
     matched_method = []
     for item_method in item_method_list:
-        if item_method == None:
+        if item_method is None:
             item_method = ""
         if method.lower() in item_method.lower():
             matched_method.append(item_method)

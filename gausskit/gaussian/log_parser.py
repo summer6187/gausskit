@@ -521,24 +521,24 @@ def read_log_parameters(
         _method = ",".join(overall_method)
         _basis = ",".join(overall_basis)
 
-    if anharm == None:
+    if anharm is None:
         overall_parameters["anharm"] = _anharm
     else:
         overall_parameters["anharm"] = anharm
 
-    if method == None:
+    if method is None:
         overall_parameters["method"] = _method
         overall_parameters["basis"] = _basis
     else:
         overall_parameters["method"] = method
         overall_parameters["basis"] = ""
 
-    if freq == None:
+    if freq is None:
         overall_parameters["freq"] = _freq
     else:
         overall_parameters["freq"] = freq
 
-    if hindrot == None:
+    if hindrot is None:
         overall_parameters["hindrot"] = _hindrot
     else:
         overall_parameters["hindrot"] = hindrot
