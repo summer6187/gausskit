@@ -61,6 +61,7 @@ class Molecules(Atoms):
         self._external_symmetry_number = None
         self._zpe = None
         self._frequencies = np.array([])
+        self._normal_coordinates = np.array([])
         self._krotor = None
         self._ad_rotor = None
         self._electronic_partition_function = None
@@ -202,6 +203,15 @@ class Molecules(Atoms):
     @frequencies.setter
     def frequencies(self, _frequencies):
         self._frequencies = _frequencies
+
+    @property
+    def normal_coordinates(self):
+        """return harmonic normal coordinates"""
+        return self._normal_coordinates
+
+    @normal_coordinates.setter
+    def normal_coordinates(self, coords):
+        self._normal_coordinates = np.asarray(coords)
 
     @property
     def hinderedrotor(self):

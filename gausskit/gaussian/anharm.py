@@ -255,15 +255,15 @@ def read_harm_freq_another(filename):
         harm_freq_list = []
         lines = f.readlines()
         for line in lines:
-            if "Harmonic frequencies" in line:
+            if "Harmonic frequencies" in line: # TODO: read normal coordinates
                 found_harm_freq = True
                 append_bool = True
-            if found_harm_freq == True:
+            if found_harm_freq:
                 if "-------------------" in line:
                     append_bool = False
                     break
 
-            if append_bool == True:
+            if append_bool:
                 harm_freq_list.append(line)
 
     harm_freq_list_clean = []
