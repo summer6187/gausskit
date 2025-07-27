@@ -9,6 +9,16 @@ from gausskit.molecules import Molecules
 
 
 def simplify_raw_name(raw_name):
+    """Simplify the molecule name parsed from a log file.
+
+    Args:
+        raw_name (str): Raw name taken directly from the filename.
+
+    Returns:
+        str: Name stripped of calculation hints and trailing
+        punctuation.
+    """
+
     match_string = ["g3xk", "g3x-k", "g4", "anharm", "opt"]
     for _string in match_string:
         if _string in raw_name.lower():
@@ -23,10 +33,34 @@ def simplify_raw_name(raw_name):
 
 
 def parse_species(filepath):
+    """Parse a Gaussian output log file into a :class:`Molecules` object.
+
+    Args:
+        filepath (Path): Path to the Gaussian log file.
+
+    Returns:
+        Molecules: Parsed molecule instance.
+    """
+
     return Molecules.from_log(filepath)
 
 
 def append_species(database: dict, filepath: Path, method=None):
+    """Append a species parsed from a log file to an in-memory database.
+
+    The method is automatically derived from the log file. If hindered
+    rotor data are present ``_hindrot`` is appended to the method name.
+
+    Args:
+        database (dict): Existing molecule database to modify.
+        filepath (Path): Path to the Gaussian log file.
+        method (str, optional): Method label to store the species under.
+            When ``None`` the method embedded in the log is used.
+
+    Returns:
+        dict: The updated database dictionary.
+    """
+
     raw_name = filepath.stem
     simple_name = simplify_raw_name(raw_name)
     mol = parse_species(filepath)
@@ -49,9 +83,11 @@ def append_species(database: dict, filepath: Path, method=None):
 
 
 class NumpyEncoder(json.JSONEncoder):
-    """Special json encoder for numpy types"""
+    """JSON encoder that transparently handles NumPy types."""
 
     def default(self, obj):
+        """Convert unsupported objects into JSON serialisable structures."""
+
         if isinstance(obj, np.integer):
             return int(obj)
         elif isinstance(obj, np.floating):
@@ -64,11 +100,15 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 def jsonIndentLimit(jsonString, indent, limit):
+    """Remove indentation beyond a given level in a JSON string."""
+
     regexPattern = re.compile(f"\n({indent}){{{limit}}}(({indent})+|(?=(}}|])))")
     return regexPattern.sub("", jsonString)
 
 
 def get_name_info(ds: dict, name: str):
+    """Collect metadata about available methods for a species."""
+
     name_info_list = []
     for _method in ds[name].keys():
         method_info = _method
@@ -82,6 +122,16 @@ def get_name_info(ds: dict, name: str):
 
 
 def write_database(database: dict, outfile: Path = Path("database.json")):
+    """Write the molecule database to disk in JSON format.
+
+    Args:
+        database (dict): Nested dictionary of :class:`Molecules` objects.
+        outfile (Path, optional): File to write the database to.
+
+    Returns:
+        None
+    """
+
     database_dict = {}
     for item in database:
         database_dict[item] = {}
@@ -94,6 +144,18 @@ def write_database(database: dict, outfile: Path = Path("database.json")):
     return
 
 def load_database(filename: Path) -> dict:
+    """Read a molecule database.
+
+    This helper understands the ``.pickle`` format written by
+    :func:`write_database` as well as its JSON representation.
+
+    Args:
+        filename: Path to the database file.
+
+    Returns:
+        dict: Nested dictionary of :class:`~gausskit.molecules.Molecules`
+        objects keyed first by molecule name and then by method.
+    """
     if isinstance(filename, str):
         filename = Path(filename)
 
@@ -118,8 +180,13 @@ def load_database(filename: Path) -> dict:
     return database
 
 def show_database(ds: dict):
-    """
-    Formated printing database information
+    """Display database information in a readable form.
+
+    Args:
+        ds: Database dictionary returned by :func:`load_database`.
+
+    Returns:
+        None
     """
     for name in ds.keys():
         name_info = get_name_info(ds, name)
