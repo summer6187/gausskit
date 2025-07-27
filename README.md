@@ -1,5 +1,10 @@
 # Gausskit
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black) 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
+
+## Documentation style
+
+Gausskit uses [Google style](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)
+docstrings to document its modules, classes, and functions.
 ***
 A user friendly python interface for Gaussian 09/16 and Multiwell packages users.
 
