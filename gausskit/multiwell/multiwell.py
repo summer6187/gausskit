@@ -19,6 +19,25 @@ def write_multiwell(
     bimolecular_concentration:float = 1.,
     verbose:bool = False,
 ):
+    """Generate the ``multiwell`` input file for a reaction network.
+
+    Args:
+        PES_data (dict): Potential energy surface information.
+        multiwell_methods (dict): Options controlling the calculation.
+        collider (str, optional): Name of the collider gas. Defaults to ``"N2"``.
+        Egrain (str, optional): Energy grain specification. Defaults to
+            ``"10   3000    4000    50000"``.
+        datfile (Path, optional): Destination file name. Defaults to
+            ``multiwell.dat``.
+        bimolecular_concentration (float, optional): Concentration factor for
+            bimolecular channels. Defaults to ``1.``.
+        verbose (bool, optional): Emit progress information. Defaults to
+            ``False``.
+
+    Returns:
+        None
+    """
+
     # Parse multiwell_methods information
     multiwell_temperature = multiwell_methods["temperature"]
     multiwell_pressures = multiwell_methods["pressures"]
@@ -282,6 +301,17 @@ def run_multiwell(
     datfile:Path = Path("multiwell.dat"),
     verbose:bool = False,
 ):
+    """Call the ``multiwell`` executable on ``datfile``.
+
+    Args:
+        datfile (Path): Input file for ``multiwell``.
+        verbose (bool, optional): Print the command being executed. Defaults to
+            ``False``.
+
+    Returns:
+        None
+    """
+
     cwd = datfile.parent.absolute()
 
     command = f"cd {cwd}; " + config.machine.multiwell_command + f" {datfile.name}"
@@ -295,6 +325,16 @@ def get_thermo_methods(
     multiwell_methods: dict,
     verbose:bool = False,
 ):
+    """Translate multiwell settings into a dictionary for :mod:`thermo`.
+
+    Args:
+        multiwell_methods (dict): Options read from the MultiWell section.
+        verbose (bool, optional): Show the translated settings. Defaults to
+            ``False``.
+
+    Returns:
+        dict: Thermo configuration derived from MultiWell settings.
+    """
     thermo_methods = {
         "tunneling": False,
         "hinderedrotor": False,
@@ -312,6 +352,14 @@ def get_thermo_methods(
 def read_rate_from_thermo(
     outfile:Path,
 ):
+    """Extract Arrhenius parameters from a ``thermo`` output file.
+
+    Args:
+        outfile (Path): File written by the ``thermo`` program.
+
+    Returns:
+        tuple: ``(A, B)`` Arrhenius parameters.
+    """
     with open(outfile, "r") as f:
         lines = f.readlines()
 
@@ -331,6 +379,17 @@ def run_bimol_thermo(
     thermo_path:Path,
     verbose:bool = False,
 ):
+    """Compute rates for bimolecular channels using ``thermo``.
+
+    Args:
+        PES_data (dict): Potential energy surface information.
+        multiwell_methods (dict): Input options for MultiWell.
+        thermo_path (Path): Working directory for ``thermo`` files.
+        verbose (bool, optional): Enable log messages. Defaults to ``False``.
+
+    Returns:
+        None
+    """
     bimol_PES_data = {}
     for PES_num in multiwell_methods["bimolecular_channel"]:
         bimol_PES_data[PES_num] = PES_data[str(PES_num)]

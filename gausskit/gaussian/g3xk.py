@@ -1,19 +1,29 @@
-"""
-read G3XK file, get energy
-***WORNING***
-E_SO is not included in the calculation
-"""
+"""Utility functions to extract energies from G3XK Gaussian outputs."""
 
 import sys
 from gausskit.gaussian.log_parser import get_energy, check_normal_termination, parse_freq, get_result_blocks, verbose_print
 
 
 def get_E_SO():
-    # get E_SO is set to 0
+    """Return the spin--orbit correction.
+
+    Returns:
+        float: Always ``0`` because spin--orbit contributions are ignored.
+    """
+
     return 0
 
 
 def get_g3xk_ele_energy(result_blocks, E_SO):
+    """Compute the electronic energy using the G3XK scheme.
+
+    Args:
+        result_blocks (list[str]): Parsed ``\1\`` blocks from the log file.
+        E_SO (float): Spin--orbit correction energy.
+
+    Returns:
+        float: The final electronic energy in Hartree.
+    """
     scale_factor_dict = {
         "SHF": 1.0945,
         "SE234": 1.0712,
@@ -80,6 +90,19 @@ def get_g3xk_ele_energy(result_blocks, E_SO):
 
 
 def read_g3xk_energy(filename, anharm=False, verbose=False):
+    """Parse a G3XK output file and calculate energies.
+
+    Args:
+        filename (str | Path): Path to the Gaussian log file.
+        anharm (bool, optional): Whether anharmonic corrections were
+            included in the run. Defaults to ``False``.
+        verbose (bool, optional): Print a formatted summary of the
+            energies. Defaults to ``False``.
+
+    Returns:
+        dict: Dictionary with keys ``Eele``, ``E_ZPE`` and ``E0``.
+    """
+
     with open(filename, "r", encoding="utf-8") as f:
         lines = f.readlines()
 

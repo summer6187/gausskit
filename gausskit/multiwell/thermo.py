@@ -15,6 +15,16 @@ config = Configuration()
 module = "[Thermo]"
 
 def get_thermo_head_lines(temp, n_species):
+    """Return header lines for a ``thermo`` input file.
+
+    Args:
+        temp (str): Temperature grid specification.
+        n_species (int): Number of species blocks to follow.
+
+    Returns:
+        list[str]: The header lines.
+    """
+
     head_lines = [
         "KCAL   MCC",
         str(len(temp.split())),
@@ -38,6 +48,25 @@ def get_thermo_lines(
     if_hinderedrotor:bool = False,
     hindrot_item_Mol_dict:dict = {},
 ):
+    """Generate the block describing ``mol`` for a ``thermo`` input file.
+
+    Args:
+        mol (Molecules): Molecule being described.
+        dummy_name (str): Identifier used in the input file.
+        thermo_path (Path): Directory for auxiliary files.
+        mol_type (str, optional): ``'reac'``, ``'prod'`` or ``'ctst'``.
+        forwards_barrier (float, optional): Forward barrier height in kcal/mol.
+        backwards_barrier (float, optional): Reverse barrier height.
+        if_ktools (bool, optional): Use ktools formatting. Defaults to ``False``.
+        if_tunneling (bool, optional): Include tunnelling information.
+        if_anharm (bool, optional): Treat anharmonic corrections.
+        if_hinderedrotor (bool, optional): Include hindered rotors.
+        hindrot_item_Mol_dict (dict, optional): Mapping of dummy names to
+            hindered rotor molecules.
+
+    Returns:
+        list[str]: Lines describing ``mol``.
+    """
     lines = []
 
     if mol_type is not None:
@@ -158,6 +187,20 @@ def write_thermo(
     datfile:Path = Path("densum.dat"),
     verbose:bool = False,
 ):
+    """Write the main ``thermo`` input file describing the PES.
+
+    Args:
+        PES_data (dict): Potential energy surface data.
+        thermo_methods (dict): Dictionary of thermo options.
+        thermo_path (Path): Directory where files are written.
+        hindrot_item_reduced_mominert_dict (dict): Reduced moments for hindered
+            rotors.
+        datfile (Path, optional): Output file name. Defaults to ``densum.dat``.
+        verbose (bool, optional): Print progress messages. Defaults to ``False``.
+
+    Returns:
+        None
+    """
 
     # Parse thermo_methods information
     if_tunneling = thermo_methods["tunneling"]
@@ -243,6 +286,19 @@ def write_single_thermo(
     thermo_path:Path = Path("thermo"),
     verbose:bool = False,
 ):
+    """Write a stand-alone ``thermo`` input file for ``mol``.
+
+    Args:
+        temp (str): Temperature grid string.
+        mol (Molecules): Molecule to be processed.
+        dummy_name (str): Identifier prefix.
+        thermo_path (Path, optional): Output directory. Defaults to ``thermo``.
+        verbose (bool, optional): Emit progress information. Defaults to
+            ``False``.
+
+    Returns:
+        None
+    """
 
     reaction_lines = get_thermo_head_lines(temp, 1)
 
@@ -274,6 +330,19 @@ def run_thermo(
     outfile:Path = None,
     verbose:bool = False,
 ):
+    """Execute the ``thermo`` program using ``datfile`` as input.
+
+    Args:
+        datfile (Path): ``thermo`` input file.
+        outfile (Path, optional): Where to move the output. Defaults to the
+            same name with ``.out`` extension.
+        verbose (bool, optional): Display executed command. Defaults to
+            ``False``.
+
+    Returns:
+        None
+    """
+
     cwd = datfile.parent.absolute()
 
     command = f"cd {cwd}; " + config.machine.thermo_command + f" {datfile.name}"
@@ -298,6 +367,16 @@ def read_electronic_partition_function(
     outfile:Path = Path("thermo.out"),
     verbose:bool = False,
 ) -> float:
+    """Read the temperature independent electronic partition function.
+
+    Args:
+        outfile (Path): Output file from ``thermo``.
+        verbose (bool, optional): Print diagnostic information. Defaults to
+            ``False``.
+
+    Returns:
+        float: The electronic partition function.
+    """
     with open(outfile, "r") as f:
         lines = f.readlines()
 

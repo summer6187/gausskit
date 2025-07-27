@@ -12,6 +12,21 @@ def write_ktools(
     datfile:Path = Path("ktools.dat"),
     verbose:bool = False,
 ):
+    """Write an input file for the ``ktools`` program.
+
+    Args:
+        PES_data (dict): Parsed potential energy surface data.
+        thermo_methods (dict): Thermo configuration dictionary.
+        thermo_path (Path): Directory for generated files.
+        hindrot_item_reduced_mominert_dict (dict): Reduced moments for hindered
+            rotors.
+        datfile (Path, optional): Output filename. Defaults to ``ktools.dat``.
+        verbose (bool, optional): Enable progress messages. Defaults to
+            ``False``.
+
+    Returns:
+        None
+    """
 
     # Parse thermo_methods information
     bonds = thermo_methods["bonds"]

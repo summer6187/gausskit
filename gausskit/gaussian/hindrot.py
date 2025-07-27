@@ -5,6 +5,7 @@ from ase import units
 
 
 class Hinderedrotor:
+    """Container for hindered internal rotation parameters."""
     def __init__(
         self,
         reduced_moms,
@@ -15,6 +16,21 @@ class Hinderedrotor:
         periodicity,
         multiplicity,
     ) -> None:
+        """Create a :class:`Hinderedrotor` instance.
+
+        Args:
+            reduced_moms (Sequence[float]): Reduced moments of inertia in
+                amu\*Å².
+            rotating_bonds (Sequence[Sequence[int]]): Atom indices defining
+                the rotating bonds.
+            rotating_groups (Sequence[Sequence[int]]): Atom groups attached to
+                each rotating bond.
+            corrected_vibs (Sequence[int]): Indices of the vibrational modes to
+                replace with rotors.
+            symmetry_numbers (Sequence[int]): Symmetry numbers for each rotor.
+            periodicity (Sequence[int]): Periodicity for each rotor.
+            multiplicity (Sequence[int]): Multiplicity for each rotor.
+        """
         self._reduced_moms = reduced_moms
         self._rotating_bonds = rotating_bonds
         self._rotating_groups = rotating_groups
@@ -29,7 +45,7 @@ class Hinderedrotor:
 
     @property
     def rotors(self):
-        """return a list of objects of Rotor"""
+        """list[Rotor]: All rotor objects lazily constructed."""
         if self._rotors == []:
             for i in range(len(self._reduced_moms)):
                 this_rotor = Rotor(
@@ -98,6 +114,7 @@ class Hinderedrotor:
 
 
 class Rotor:
+    """Simple data object representing one hindered rotor."""
     def __init__(
         self,
         reduced_mom,
@@ -108,6 +125,18 @@ class Rotor:
         periodicity,
         multiplicity,
     ) -> None:
+        """Initialize a :class:`Rotor`.
+
+        Args:
+            reduced_mom (float): Reduced moment of inertia in amu\*Å².
+            rotating_bond (Sequence[int]): Atom indices defining the bond.
+            rotating_group (Sequence[int]): Atoms belonging to the rotating
+                group.
+            corrected_vib (int): Index of the vibrational mode replaced.
+            symmetry_numbers (int): Symmetry number of the rotor.
+            periodicity (int): Periodicity of the rotor potential.
+            multiplicity (int): Multiplicity of the rotor.
+        """
         self.reduced_mom = reduced_mom
         self.rotating_bond = rotating_bond
         self.rotating_group = rotating_group
@@ -118,11 +147,14 @@ class Rotor:
 
 
 def read_hindrot(filename):
-    """
-    This function takes a gaussian log file with hindered rotor analysis
-    filename: example.log
-    this function returns a Hindered rotor
-    return Hinderedrotor object
+    """Parse hindered rotor data from a Gaussian log file.
+
+    Args:
+        filename (str | Path): Path to the log file produced with the
+            ``HINDROT`` keyword enabled.
+
+    Returns:
+        Hinderedrotor: Parsed hindered rotor information.
     """
     with open(filename) as f:
         found_hindrot = False

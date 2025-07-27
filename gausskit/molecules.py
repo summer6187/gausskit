@@ -281,6 +281,15 @@ class Molecules(Atoms):
 
     @classmethod
     def from_log(cls, filename):
+        """Create a :class:`Molecules` instance from a Gaussian log file.
+
+        Args:
+            filename (str | Path): Gaussian output file to parse.
+
+        Returns:
+            Molecules: Parsed molecule or an empty instance if the log could not
+            be interpreted.
+        """
 
         parameters = read_log_parameters(filename)
         if parameters is None:
@@ -354,11 +363,23 @@ class Molecules(Atoms):
         return mol
 
     def set_filepath(self, filepath):
+        """Store the absolute path to the originating log file.
+
+        Args:
+            filepath (str | Path): Path of the log file.
+        """
+
         logpath = Path(filepath).resolve()
         self.logpath = logpath
         return
 
     def to_dict(self):
+        """Serialise the molecule to a plain Python dictionary.
+
+        Returns:
+            dict: Serializable representation of the molecule.
+        """
+
         mol_dict = {}
         # store Atoms object info
         mol_dict["symbols"] = self.get_chemical_symbols()
@@ -384,6 +405,14 @@ class Molecules(Atoms):
 
     @classmethod
     def from_dict(cls, mol_dict):
+        """Reconstruct a :class:`Molecules` from a dictionary.
+
+        Args:
+            mol_dict (dict): Dictionary as produced by :meth:`to_dict`.
+
+        Returns:
+            Molecules: Reconstructed instance.
+        """
         symbols = mol_dict["symbols"]
         numbers = symbols2numbers(symbols)
         positions = mol_dict["positions"]
@@ -408,6 +437,15 @@ class Molecules(Atoms):
 
 
     def get_xyz_block(self, fmt='%22.15f'):
+        """Return the molecular geometry in simple XYZ format.
+
+        Args:
+            fmt (str, optional): Format string for coordinates.
+
+        Returns:
+            str: XYZ formatted geometry string.
+        """
+
         natoms = len(self.symbols)
         block = "%d\n \n" % (natoms)
         for s, (x, y, z) in zip(self.symbols, self.positions):

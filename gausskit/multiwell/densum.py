@@ -18,6 +18,19 @@ def get_degrees_of_freedom_lines(
     ad_rot:float,
     if_ktools:bool = False,
 ):
+    """Create the degree-of-freedom block for ``densum``.
+
+    Args:
+        mol (Molecules): Molecule with frequencies attached.
+        krot (float): K-rotor constant in cm⁻¹.
+        ad_rot (float): 2D adiabatic rotor constant in cm⁻¹.
+        if_ktools (bool, optional): Use ``kro``/``jro`` labels when
+            ``True``. Defaults to ``False``.
+
+    Returns:
+        list[str]: Lines to be appended to ``densum.dat``.
+    """
+
     # get all non imaginary frequencies
     freq = mol.frequencies
     nonimg_freq = freq[freq>0]
@@ -110,6 +123,17 @@ def run_densum(
     outfile:Path = Path("densum.out"),
     verbose:bool = False,
 ):
+    """Run the external ``densum`` program.
+
+    Args:
+        datfile (Path): Input ``densum`` control file.
+        outfile (Path): Expected output file name.
+        verbose (bool, optional): Print executed command. Defaults to ``False``.
+
+    Returns:
+        None
+    """
+
     cwd = datfile.parent.absolute()
 
     # We do this because densum program only read densum.dat file
