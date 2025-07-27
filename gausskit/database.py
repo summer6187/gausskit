@@ -1,4 +1,6 @@
-import pickle, re, json
+import pickle
+import re
+import json
 import argparse
 from pathlib import Path, PosixPath
 import numpy as np
@@ -110,22 +112,10 @@ def load_database(filename: Path) -> dict:
                     database_dict[item][method]
                 )
     else:
-        print(f"Warning! database file type Unknown. Only .pickle or .json supported.")
+        print("Warning! database file type Unknown. Only .pickle or .json supported.")
         database = {}
 
     return database
-
-def get_name_info(ds: dict, name: str):
-    name_info_list = []
-    for _method in ds[name].keys():
-        method_info = _method
-        if ds[name][_method].ts:
-            method_info += "_ts"
-        if ds[name][_method].frequencies.any():
-            method_info += "_freq"
-        name_info_list.append(method_info)
-
-    return name_info_list
 
 def show_database(ds: dict):
     """

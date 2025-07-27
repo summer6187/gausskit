@@ -26,7 +26,7 @@ def finish_line(dry:bool = False):
 @click.version_option(gausskit_version, "-V", "--version")
 def cli():
     """gausskit: Transition state theory code. Interfacing Gaussian09/16 and Multiwell"""
-    click.echo(f"Welcome to gausskit!\n")
+    click.echo("Welcome to gausskit!\n")
     click.echo("=" * 80)
 
 

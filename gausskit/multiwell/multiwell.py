@@ -4,7 +4,7 @@ import subprocess
 from gausskit.multiwell.thermo import write_thermo, run_thermo
 from gausskit.rdkit import get_lj_parameters
 from gausskit.settings import Configuration
-from gausskit._defaults import colliders, trail_line
+from gausskit._defaults import colliders
 
 config = Configuration()
 
@@ -25,7 +25,7 @@ def write_multiwell(
     multiwell_wells = multiwell_methods["wells"]
     multiwell_channels = multiwell_methods["channels"]
     multiwell_tunneling = multiwell_methods["tunneling"]
-    multiwell_anharm = multiwell_methods["anharm"]
+    multiwell_methods["anharm"]
 
     # gather PES_info
     # item_list: Mol1, TS2, Mol3
@@ -42,7 +42,7 @@ def write_multiwell(
             item_mol_name_list.append(PES_data[PES_num]["PES_items"][item]["mol_name"])
             Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
             item_Mol_list.append(Mol)
-        if PES_data[PES_num]["final_ts"] == True:
+        if PES_data[PES_num]["final_ts"]:
             forwards_barrier = PES_data[PES_num]["PES_energy"]
             reverse_PES_num = list(PES_data.keys())[n + 1]
             backwards_barrier = PES_data[reverse_PES_num]["reverse"]
@@ -79,13 +79,13 @@ def write_multiwell(
     for n_well in multiwell_wells:
         n_mol += 1
         mol_list = item_Mol_list[n_well - 1]
-        if type(mol_list)==list and len(mol_list) > 1:
+        if isinstance(mol_list, list) and len(mol_list) > 1:
             exit(f"This well is not unimolecule! Check it out! {mol_list}") # this is a shit code, rewrite it with expect
 
         dummy_name_keys = PES_data[str(n_well)]["PES_items"].keys()
         dummy_name = list(dummy_name_keys)[0]
         mol = PES_data[str(n_well)]["PES_items"][dummy_name]["Mol"]
-        mol_name = PES_data[str(n_well)]["PES_items"][dummy_name]["mol_name"]
+        PES_data[str(n_well)]["PES_items"][dummy_name]["mol_name"]
         
         # HMol: enthalpy of formation at 0 K (units defined by keyword)
         relative_energy = 0.0
@@ -186,7 +186,7 @@ def write_multiwell(
 
         reaction_lines.append(line)
 
-    reaction_lines.append(f"LJ")
+    reaction_lines.append("LJ")
 
     # formatting transition state lines
     reaction_lines.append("\n")
@@ -232,14 +232,14 @@ def write_multiwell(
                     Habs_tunneling = True
 
         if Habs_tunneling:
-            line += f"'rev' 'TUN' 'FAST' 'NOCENT' 'sum'"
+            line += "'rev' 'TUN' 'FAST' 'NOCENT' 'sum'"
             reaction_lines.append(line)
             freq = mol.frequencies
             img_freq = freq[freq<0][0]
             assert img_freq < 0, f"Frequency problem: {freq}"
             reaction_lines.append(f"'TUN'    {-img_freq:.4f}")
         else:
-            line += f"'rev' 'NOTUN' 'FAST' 'cent2' 'sum'"
+            line += "'rev' 'NOTUN' 'FAST' 'cent2' 'sum'"
             reaction_lines.append(line)
 
 

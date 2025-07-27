@@ -142,7 +142,7 @@ def get_thermo_lines(
                 corr_rot = mol.hinderedrotor._reduced_moms[n_index]
                 rottype = "qrot " if (corr_rot < 11.0) else "rot  "
                 line = f"  # {n_vib:>3}{rottype:>6}{corr_rot:>9.4f}(from G16)"
-                line += f"{hindrot_item_reduced_mominert_dict[dummy_name][n_index]:>9.4f}(from Mominert)  "
+                line += f"{hindrot_item_reduced_mominert_dict[dummy_name][n_index]:>9.4f}(from Mominert)  " # FIXME: wtf???
                 line += f" {mol.hinderedrotor._symmetry_numbers[n_index]}   1"
                 dof_lines[n_vib] = line
 
@@ -163,7 +163,7 @@ def write_thermo(
     if_tunneling = thermo_methods["tunneling"]
     if_hinderedrotor = thermo_methods["hinderedrotor"]
     if_anharm = thermo_methods["anharm"]
-    thermo_adj_barrier = thermo_methods["adj_barrier"]
+    thermo_methods["adj_barrier"]
     thermo_temp = thermo_methods["temperatures"]
     thermo_pressure = thermo_methods["pressures"]
 
@@ -172,9 +172,9 @@ def write_thermo(
     else:
         temp = thermo_temp
     if "default" in thermo_pressure:
-        pressure = "1"
+        pass
     else:
-        pressure = thermo_pressure
+        pass
 
     # gather PES_info
     # item_list: Mol1, TS2, Mol3
@@ -193,7 +193,7 @@ def write_thermo(
             item_Mol_list.append(Mol)
             forwards_barrier = PES_data[PES_num]["PES_energy"]
             forwards_barrier_list.append(forwards_barrier)
-        if PES_data[PES_num]["final_ts"] == True:
+        if PES_data[PES_num]["final_ts"]:
             reverse_PES_num = list(PES_data.keys())[n + 1]
             backwards_barrier = PES_data[reverse_PES_num]["reverse"]
             break

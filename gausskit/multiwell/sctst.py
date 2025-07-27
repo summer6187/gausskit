@@ -93,8 +93,8 @@ def write_parsctst(
     if separable_modes:
         sep_mode_lines = []
         for n_index, harm_freq in enumerate(sep_harm_freq):
-            l = f"{n_index+1}   vib  {harm_freq:.4f}  0.0  1  ! Active separable mode"
-            sep_mode_lines.append(l)
+            line = f"{n_index+1}   vib  {harm_freq:.4f}  0.0  1  ! Active separable mode"
+            sep_mode_lines.append(line)
         lines += sep_mode_lines
 
     lines.append(f"{Egrain}")

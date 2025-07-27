@@ -153,7 +153,7 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
                 PES_item_dict[dummy_name]["item_energy"] = E_0K * Hartree / (kcal / mol)
                 item_ts = get_item_ts(database[item], PES_methods)
                 PES_item_dict[dummy_name]["ts"] = item_ts
-                if item_ts == True:
+                if item_ts:
                     final_ts = True
 
         # PES_items = collections.namedtuple("PES_items", PES_item_dict.keys())(**PES_item_dict)

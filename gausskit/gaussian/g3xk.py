@@ -5,7 +5,7 @@ E_SO is not included in the calculation
 """
 
 import sys
-from .log_parser import *
+from gausskit.gaussian.log_parser import get_energy, check_normal_termination, parse_freq, get_result_blocks, verbose_print
 
 
 def get_E_SO():

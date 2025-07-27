@@ -19,7 +19,7 @@ def write_ktools(
     if_tunneling = thermo_methods["tunneling"]
     if_hinderedrotor = thermo_methods["hinderedrotor"]
     if_anharm = thermo_methods["anharm"]
-    thermo_adj_barrier = thermo_methods["adj_barrier"]
+    thermo_methods["adj_barrier"]
     thermo_temp = thermo_methods["temperatures"]
     thermo_pressure = thermo_methods["pressures"]
 
@@ -28,8 +28,8 @@ def write_ktools(
         # make sure the number of trial modes matches trial items
         trial_items = [n for n in PES_data if str.isnumeric(n)]
         if len(trial_modes) != len(trial_items):
-            print(f"The number of trial_modes doesn't match trial items!")
-            print(f"Trial modes won't be used!")
+            print("The number of trial_modes doesn't match trial items!")
+            print("Trial modes won't be used!")
 
         for n, (PES_num, trial_mode) in enumerate(zip(trial_items, trial_modes)):
             for item in PES_data[PES_num]["PES_items"]:
@@ -43,9 +43,9 @@ def write_ktools(
     else:
         temp = thermo_temp
     if "default" in thermo_pressure:
-        pressure = "1"
+        pass
     else:
-        pressure = thermo_pressure
+        pass
 
     # gather PES_info
     # item_list: Mol1, TS2, Mol3

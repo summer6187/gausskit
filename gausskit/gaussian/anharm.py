@@ -67,12 +67,12 @@ def read_anharm_x_matrix(filename):
             if "Total Anharmonic X Matrix" in line:
                 found_anharm_matrix = True
                 append_bool = True
-            if found_anharm_matrix == True:
+            if found_anharm_matrix:
                 if "============================================" in line:
                     append_bool = False
                     break
 
-            if append_bool == True:
+            if append_bool:
                 line = re.sub(r"D", "E", line)
                 anharm_matrix_lines.append(line)
     anharm_matrix_lines = anharm_matrix_lines[2:]
@@ -91,12 +91,12 @@ def read_anharm_xl_matrix(filename):
             if "Total Anharmonic Xl Matrix" in line:
                 found_anharm_matrix = True
                 append_bool = True
-            if found_anharm_matrix == True:
+            if found_anharm_matrix:
                 if "============================================" in line:
                     append_bool = False
                     break
 
-            if append_bool == True:
+            if append_bool:
                 line = re.sub(r"D", "E", line)
                 anharm_matrix_lines.append(line)
     anharm_matrix_lines = anharm_matrix_lines[2:]
@@ -109,7 +109,7 @@ def read_full_anharm_matrix(filename):
     Anharmonic X matrix and Anharmonic Xl matrix
     """
     anharm_matrix = read_anharm_x_matrix(filename)
-    anharm_xl_matrix = read_anharm_xl_matrix(filename)
+    read_anharm_xl_matrix(filename)
     # anharm_matrix += anharm_xl_matrix
 
     with open(filename) as f:
@@ -120,13 +120,13 @@ def read_full_anharm_matrix(filename):
         for line in lines:
             if "Fundamental Bands" in line:
                 found_harm_freq = True
-            if found_harm_freq == True:
+            if found_harm_freq:
                 append_bool = True
                 if "Overtones" in line:
                     append_bool = False
                     break
 
-            if append_bool == True:
+            if append_bool:
                 harm_freq_lines.append(line)
 
     f_index_list = []
@@ -214,13 +214,13 @@ def read_harm_freq(filename):
         for line in lines:
             if "Fundamental Bands" in line:
                 found_harm_freq = True
-            if found_harm_freq == True:
+            if found_harm_freq:
                 append_bool = True
                 if "Overtones" in line:
                     append_bool = False
                     break
 
-            if append_bool == True:
+            if append_bool:
                 harm_freq_list.append(line)
 
     harm_freq_list_clean = []

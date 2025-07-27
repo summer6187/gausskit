@@ -3,7 +3,7 @@ read G4 file, get energy
 """
 
 import sys
-from .log_parser import *
+from gausskit.gaussian.log_parser import get_energy, check_normal_termination, parse_freq, get_result_blocks, verbose_print
 
 
 def get_g4_energy(result_blocks):
@@ -27,7 +27,7 @@ def read_g4_energy(filename, verbose=False):
 
         # get thermal data with scaled ZPE
         ZPE_scale = 0.9854
-        thermal_data = parse_freq(lines, ZPE_scale, anharm)
+        thermal_data = parse_freq(lines, ZPE_scale)
 
         # read result blocks to calculate G4 Eele
         result_blocks = get_result_blocks(lines)

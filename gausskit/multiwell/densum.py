@@ -23,7 +23,7 @@ def get_degrees_of_freedom_lines(
     nonimg_freq = freq[freq>0]
 
     # degrees of freedom
-    degrees_of_freedom = len(nonimg_freq)
+    len(nonimg_freq)
 
     lines = []
 

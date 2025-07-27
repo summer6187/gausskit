@@ -290,7 +290,7 @@ class Molecules(Atoms):
         freq = parameters["freq"]
         hindrot = parameters["hindrot"]
         method = parameters["method"]
-        basis = parameters["basis"]
+        parameters["basis"]
 
         energy = read_log_energy(
             filename,
@@ -302,7 +302,6 @@ class Molecules(Atoms):
         with open(filename, "r", encoding="utf-8") as f:
             atoms = read_gaussian_out(f)
 
-        symbols = atoms.symbols
         numbers = atoms.numbers
         positions = atoms.positions
 
