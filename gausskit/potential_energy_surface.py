@@ -10,6 +10,16 @@ from gausskit._defaults import trail_line
 
 
 def config_section_map(config, section):
+    """Return a dictionary representation of a ``configparser`` section.
+
+    Args:
+        config (ConfigParser): Parsed configuration object.
+        section (str): Section name.
+
+    Returns:
+        dict: Key-value pairs from the section.
+    """
+
     dict1 = {}
     options = config.options(section)
     for option in options:
@@ -24,6 +34,17 @@ def config_section_map(config, section):
 
 
 def config_getboolean(config, section, option):
+    """Safely read a boolean option from ``config``.
+
+    Args:
+        config (ConfigParser): Parsed configuration.
+        section (str): Section name.
+        option (str): Option key.
+
+    Returns:
+        bool: ``True`` if the option exists and is truthy, else ``False``.
+    """
+
     section_map = config_section_map(config, section)
     if option.lower() in section_map:
         _bool = config.getboolean(section, option)
@@ -33,6 +54,16 @@ def config_getboolean(config, section, option):
 
 
 def match_method(item_method_list, method):
+    """Return all methods in ``item_method_list`` matching ``method``.
+
+    Args:
+        item_method_list (Sequence[str]): Methods available for an entry.
+        method (str): Substring to match.
+
+    Returns:
+        list[str]: Matched method names.
+    """
+
     matched_method = []
     for item_method in item_method_list:
         if item_method is None:
@@ -47,6 +78,17 @@ def match_method(item_method_list, method):
 
 
 def get_item_energy(item, PES_method_dict):
+    """Return the zero-point corrected energy for a database entry.
+
+    Args:
+        item (dict): Entry from the molecule database.
+        PES_method_dict (dict): Method specification containing keys
+            ``Eele_method``, ``ZPE_method`` and ``anharm_method``.
+
+    Returns:
+        tuple: ``(E0, molecule)`` where ``E0`` is in Hartree and ``molecule`` is
+        the :class:`Molecules` instance providing the ZPE.
+    """
     Eele_method = PES_method_dict["Eele_method"]
     ZPE_method = PES_method_dict["ZPE_method"]
     anharm_method = PES_method_dict["anharm_method"]
@@ -85,6 +127,15 @@ def get_item_energy(item, PES_method_dict):
 
 
 def get_item_ts(item, PES_method_dict):
+    """Determine whether the item represents a transition state.
+
+    Args:
+        item (dict): Entry from the molecule database.
+        PES_method_dict (dict): Method dictionary with key ``ZPE_method``.
+
+    Returns:
+        bool: ``True`` if the item is a transition state.
+    """
     ZPE_method = PES_method_dict["ZPE_method"]
 
     # match method in name_method list
@@ -102,6 +153,18 @@ def get_item_ts(item, PES_method_dict):
 
 
 def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
+    """Assemble all information required for PES calculations.
+
+    Args:
+        database (dict): Database loaded from JSON.
+        PES_dict (dict): Mapping of PES numbers to item strings.
+        PES_num_list (Iterable): Order in which to parse items.
+        PES_methods (dict): Methods for energies and ZPE.
+        verbose (bool, optional): Print summary table. Defaults to ``False``.
+
+    Returns:
+        dict: Parsed PES data ready for workflows.
+    """
 
     # init PES_data
     PES_data = {}
@@ -214,6 +277,15 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
 
 
 def thermo_method_warning(thermo_methods, PES_methods):
+    """Check for incompatible thermo settings.
+
+    Args:
+        thermo_methods (dict): Options passed to thermo calculations.
+        PES_methods (dict): Methods used for constructing the PES.
+
+    Returns:
+        None
+    """
     if thermo_methods["anharm"]:
         if thermo_methods["tunneling"]:
             print("WARNING, Thermo anharm conflict with tunneling")
@@ -231,6 +303,16 @@ def thermo_method_warning(thermo_methods, PES_methods):
 
 
 def PES_parser(config, dry:bool=False, verbose:bool=False):
+    """Parse a configuration file and run requested calculations.
+
+    Args:
+        config (ConfigParser): Parsed configuration file.
+        dry (bool, optional): Only generate input files. Defaults to ``False``.
+        verbose (bool, optional): Verbose output. Defaults to ``False``.
+
+    Returns:
+        None
+    """
     # set PES Method
     if "Method" not in config.sections():
         print("No Method section found!")

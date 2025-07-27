@@ -28,6 +28,24 @@ def write_parsctst(
     datfile:Path = Path("parsctst.dat"),
     verbose:bool = False,
 ):
+    """Write the input file for the ``parsctst`` tunnelling program.
+
+    Args:
+        mol (Molecules): Transition state molecule.
+        fname (str, optional): Base filename used for output.
+        barrier (list[float], optional): Forward and reverse barriers in
+            kcal/mol.
+        Egrain (str, optional): Energy grain specification.
+        separable_modes (list[int], optional): Modes treated as separable.
+        datfile (Path, optional): Output file path. Defaults to
+            ``parsctst.dat``.
+        verbose (bool, optional): Print progress messages. Defaults to
+            ``False``.
+
+    Returns:
+        None
+    """
+
     harm_freq = mol.frequencies
     anharm_matrix = mol.anharm_matrix
 
@@ -134,6 +152,20 @@ def write_bdens(
     datfile:Path = Path("bdens.dat"),
     verbose:bool = False,
 ):
+    """Write the ``bdens`` input file for anharmonic densities.
+
+    Args:
+        mol (Molecules): Molecule for which densities are computed.
+        fname (str, optional): Base filename prefix.
+        Egrain (str, optional): Energy grain specification.
+        datfile (Path, optional): Output file path. Defaults to ``bdens.dat``.
+        verbose (bool, optional): Print progress information. Defaults to
+            ``False``.
+
+    Returns:
+        None
+    """
+
     harm_freq = mol.frequencies
     anharm_matrix = mol.anharm_matrix
 
@@ -167,6 +199,17 @@ def run_parsctst(
     datfile:Path = Path("parsctst.dat"),
     verbose:bool = False,
 ):
+    """Execute the ``parsctst`` program.
+
+    Args:
+        datfile (Path): Input control file.
+        verbose (bool, optional): Print the command being run. Defaults to
+            ``False``.
+
+    Returns:
+        None
+    """
+
     cwd = datfile.parent.absolute()
 
     _default_datfile = "parsctst.dat"
@@ -186,6 +229,17 @@ def run_bdens(
     datfile:Path = Path("bdens.dat"),
     verbose:bool = False,
 ):
+    """Execute the ``bdens`` program.
+
+    Args:
+        datfile (Path): Input control file.
+        verbose (bool, optional): Print the command being run. Defaults to
+            ``False``.
+
+    Returns:
+        None
+    """
+
     cwd = datfile.parent.absolute()
 
     _default_datfile = "bdens.dat"
@@ -202,6 +256,16 @@ def run_bdens(
     subprocess.call(command, shell=True)
 
 def fix_crp_file(filename, add_text="    GOOD   VPT4A"):
+    """Insert text into a CRP file after the summary line.
+
+    Args:
+        filename (Path | str): File to modify.
+        add_text (str, optional): Text appended to the line following
+            ``INPUT DATA SUMMARY``. Defaults to ``"    GOOD   VPT4A"``.
+
+    Returns:
+        None
+    """
     with open(filename) as f:
         lines = f.readlines()
     for n, line in enumerate(lines[1:]):

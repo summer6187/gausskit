@@ -1,12 +1,18 @@
-"""
-read G4 file, get energy
-"""
+"""Utilities to parse G4 composite method Gaussian output."""
 
 import sys
 from gausskit.gaussian.log_parser import get_energy, check_normal_termination, parse_freq, get_result_blocks, verbose_print
 
 
 def get_g4_energy(result_blocks):
+    """Return the total energy from the final G4 result block.
+
+    Args:
+        result_blocks (list[str]): Parsed result blocks from the log file.
+
+    Returns:
+        float: Electronic energy including all G4 corrections.
+    """
 
     energy_dict = {
         "G4": get_energy(result_blocks, "G4", "", "G4"),
@@ -18,6 +24,17 @@ def get_g4_energy(result_blocks):
 
 
 def read_g4_energy(filename, verbose=False):
+    """Parse a Gaussian G4 log file and compute energies.
+
+    Args:
+        filename (str | Path): Path to the Gaussian output file.
+        verbose (bool, optional): Print a summary of the energies.
+            Defaults to ``False``.
+
+    Returns:
+        dict: Dictionary with ``Eele``, ``E_ZPE`` and ``E0`` keys.
+    """
+
     with open(filename, "r", encoding="utf-8") as f:
         lines = f.readlines()
 

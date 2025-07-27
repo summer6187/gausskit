@@ -29,6 +29,24 @@ def run_PES_densdata(
     dry:bool = False,
     verbose:bool = True,
 ):
+    """Prepare density of states data for a full PES.
+
+    Args:
+        PES_data (dict): Potential energy surface description.
+        densdata_path (Path, optional): Working directory. Defaults to
+            ``"DensData"``.
+        thermo_temp (str, optional): Temperature grid string.
+        Egrain (str, optional): Energy grain specification.
+        if_hinderedrotor (bool, optional): Include hindered rotor treatment.
+        if_anharm (bool, optional): Enable anharmonic calculations.
+        dry (bool, optional): Skip execution of external programs.
+        verbose (bool, optional): Print progress. Defaults to ``True``.
+
+    Returns:
+        dict: Mapping from dummy names to reduced moments when hindered rotors
+        are processed.
+    """
+
     # gather PES_info
     # item_list: Mol1, TS2, Mol3
     item_list = []
@@ -175,6 +193,19 @@ def run_ktools_workflow(
     dry:bool = False,
     verbose:bool = False,
 ):
+    """Run the workflow required to generate input for ``ktools``.
+
+    Args:
+        PES_data (dict): Potential energy surface data.
+        ktools_methods (dict): Settings for the calculation.
+        ktools_path (Path, optional): Working directory. Defaults to ``ktools``.
+        Egrain (str, optional): Energy grain specification.
+        dry (bool, optional): Do not execute external programs.
+        verbose (bool, optional): Print progress. Defaults to ``False``.
+
+    Returns:
+        None
+    """
 
     # run density of state data
     hindrot_item_reduced_mominert_dict = run_PES_densdata(
@@ -211,6 +242,19 @@ def run_thermo_workflow(
     dry:bool = False,
     verbose:bool = False,
 ):
+    """Run a full thermo calculation workflow.
+
+    Args:
+        PES_data (dict): Potential energy surface data.
+        thermo_methods (dict): Thermo computation options.
+        thermo_path (Path, optional): Working directory. Defaults to ``thermo``.
+        Egrain (str, optional): Energy grain specification.
+        dry (bool, optional): Skip execution of external programs.
+        verbose (bool, optional): Verbose output. Defaults to ``False``.
+
+    Returns:
+        None
+    """
 
     if_hinderedrotor = thermo_methods["hinderedrotor"]
     if_anharm = thermo_methods["anharm"]
@@ -251,6 +295,20 @@ def run_multiwell_workflow(
     dry:bool = False,
     verbose:bool = False,
 ):
+    """Run the workflow for MultiWell master equation calculations.
+
+    Args:
+        PES_data (dict): Potential energy surface data.
+        multiwell_methods (dict): MultiWell options.
+        multiwell_path (Path, optional): Working directory. Defaults to
+            ``multiwell``.
+        Egrain (str, optional): Energy grain specification.
+        dry (bool, optional): Skip running external programs.
+        verbose (bool, optional): Verbose output. Defaults to ``False``.
+
+    Returns:
+        None
+    """
 
     if_hinderedrotor = False # multiwell_methods["thermo_hinderedrotor"]
     if_anharm = multiwell_methods["anharm"]
