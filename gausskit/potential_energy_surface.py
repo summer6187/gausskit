@@ -270,7 +270,7 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
             reverse_ref = PES_data[PES_num]["reverse_ref"]
 
             print(
-                f"  {PES_num:>2}. {item_string:45} {energy:>8.3f}  {reverse_energy:>8.3f}  (ref:{reverse_ref})"
+                f"  {PES_num:>2}. {item_string:45} {energy:>8.4f}  {reverse_energy:>8.4f}  (ref:{reverse_ref})"
             )
 
     return PES_data
