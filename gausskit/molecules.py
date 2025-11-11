@@ -16,6 +16,7 @@ from gausskit.gaussian.anharm import (
     read_harm_freq_another,
 )
 from gausskit.gaussian.hindrot import Hinderedrotor, read_hindrot
+from gausskit.degrees_of_freedom.vibration import Harmonic
 import gausskit.rdkit as rdkit
 
 
@@ -74,6 +75,7 @@ class Molecules(Atoms):
         self._hinderedrotor = Hinderedrotor([], [], [], [], [], [], [])
         self._name = None
         self.logpath = None
+        self._harmonic: Harmonic | None = None
 
     @property
     def charge(self):
@@ -451,3 +453,9 @@ class Molecules(Atoms):
         for s, (x, y, z) in zip(self.symbols, self.positions):
             block += "%-2s %s %s %s\n" % (s, fmt % x, fmt % y, fmt % z)
         return block
+
+    @property
+    def harmonic(self) -> Harmonic:
+        if self._harmonic is None:
+            self._harmonic = Harmonic(self)
+        return self._harmonic
