@@ -15,10 +15,12 @@ class Harmonic(DOF):
         self,
         mol: "Molecules",
         force_constants: np.ndarray | None = None,
+        masses: np.ndarray | None = None,
     ):
         super().__init__(mol)
 
         self._force_constants = force_constants
+        self._masses = masses
         self._dynamical_matrix = None
         self._frequencies = None
         self._eigenvectors = None
@@ -47,15 +49,22 @@ class Harmonic(DOF):
             msg += f"Molecules length*3: {len(self.molecules)*3} FC shape:{fc_shape}"
             raise RuntimeError(msg)
 
-        if self.molecules.get_masses() is not None:
-            self._set_dynamical_matrix()
+        self._set_dynamical_matrix()
+
+    @property
+    def masses(self) -> np.ndarray:
+        if self._masses is None:
+            self._masses = self.molecules.get_masses()
+        return self._masses
 
     @property
     def dynamical_matrix(self) -> np.ndarray | None:
+        if self._dynamical_matrix is None:
+            self._set_dynamical_matrix()
         return self._dynamical_matrix
 
     def _set_dynamical_matrix(self):
-        rminv = (self.molecules.get_masses() ** -0.5).repeat(3)
+        rminv = (self.masses ** -0.5).repeat(3)
         self._dynamical_matrix = self.force_constants * rminv[:, None] * rminv[None, :]
         self._solve()
 
@@ -73,7 +82,7 @@ class Harmonic(DOF):
             print(msg)
 
         nw = len(w2_s) - last_ignore_mode
-        n_atoms = len(self.molecules.get_masses())
+        n_atoms = len(self.masses)
 
         w_s = np.sqrt(abs(w2_s[last_ignore_mode:])) * np.sign(w2_s[last_ignore_mode:])
         X_acs = X_is[:, last_ignore_mode:].reshape(n_atoms, 3, nw)
@@ -83,10 +92,14 @@ class Harmonic(DOF):
 
     @property
     def frequencies(self) -> np.ndarray | None:
+        if self._frequencies is None:
+            self._set_dynamical_matrix()
         return self._frequencies
 
     @property
     def eigenvectors(self) -> np.ndarray | None:
+        if self._eigenvectors is None:
+            self._set_dynamical_matrix()
         return self._eigenvectors
 
     @property
