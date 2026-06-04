@@ -1,0 +1,11 @@
+These files are copied verbatim from the MultiWell suite distribution:
+
+    multiwell_examples/ktools-examples/ch2o+oh/
+        ch2o-oh.dat             -- the ktools input deck
+        ch2o-oh.canonical.test  -- the bundled expected output
+
+(C) the MultiWell authors (J. R. Barker et al.); https://multiwell.engin.umich.edu/
+
+They are included in gausskit ONLY as a validation reference for examples/ktools
+(`make plot` compares this example's ktools output against ch2o-oh.canonical.test).
+Underlying reaction data: Ali & Barker, J. Phys. Chem. A 2015, 119, 7578-7592.

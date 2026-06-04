@@ -1,0 +1,765 @@
+ch2o+oh forming PRC [Ali & Barker, J. Phys. Chem. A 119, 7578−7592 (2015)]     ! Title/comment
+! KCAL MCC                 ! Ekey, Sskey 
+! nosavefiles              ! Whatdo
+! 501  1002   20000.       ! 1D double array parameters: Imax1, Isize, Emax2
+! 11                       ! Nt number of temperatures
+! 100. 125. 150. 175. 200. 250. 300. 400. 500. 1000. 2000.
+! 1 31 2                   ! numbers of reactants, trial transition states, and products
+
+KCAL MCC                 ! Ekey, Sskey 
+nosavefiles              ! Whatdo
+40000 2.5                ! Emax, Egrain 
+500 1                    ! Jmax, Jgrain 
+501  1002   20000.       ! 1D double array parameters: Imax1, Isize, Emax2
+11                       ! Nt number of temperatures
+100. 125. 150. 175. 200. 250. 300. 400. 500. 1000. 2000.
+1 31 2                   ! numbers of reactants, trial transition states, and products
+
+ reac  'CH2O-OH-PRE'  0.000     0.0
+CH3O2
+1. formadehyde + oh reaction
+2. (blank comment line)
+3. (blank comment line)
+1   1   1
+0.0   2
+14    HAR   ghz                     
+1     vib   52.35 0     1           
+2     vib   161.26      0     1           
+3     vib   195.37      0     1           
+4     vib   450.63      0     1           
+5     vib   582.98      0     1           
+6     vib   1271.09     0     1           
+7     vib   1317.15     0     1           
+8     vib   1583.82     0     1           
+9     vib   1889.35     0     1           
+10    vib   3031.11     0     1           
+11    vib   3112.55     0     1           
+12    vib   3717.63     0     1           
+13    kro   50.63523    1     1     !     K-rotor
+14    jro   4.535349039 1     2     !     2D-rotor
+
+ ctst  'TS-250'  0.88924     2.5               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+1  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   33.55 0     1           
+2     vib   87.6  0     1           
+3     vib   250.22      0     1           
+4     vib   334.82      0     1           
+5     vib   1265.15     0     1           
+6     vib   1313.51     0     1           
+7     vib   1586.22     0     1           
+8     vib   1899.27     0     1           
+9     vib   3016.85     0     1           
+10    vib   3090.77     0     1           
+11    vib   3836.64     0     1           
+12    kro   74.85529    1     1     !     K-rotor
+13    jro   3.008627473 1     2     !     2D-rotor
+
+
+ ctst  'TS-260'  1.14458     2.6              !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+1  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   30.57 0     1           
+2     vib   81.18 0     1           
+3     vib   230.33      0     1           
+4     vib   311.13      0     1           
+5     vib   1264.73     0     1           
+6     vib   1313.31     0     1           
+7     vib   1586.16     0     1           
+8     vib   1899.8      0     1           
+9     vib   3015.47     0     1           
+10    vib   3088.76     0     1           
+11    vib   3841.75     0     1           
+12    kro   76.41595    1     1     !     K-rotor
+13    jro   2.860404066 1     2     !     2D-rotor
+
+ ctst  'TS-270'  1.38749     2.7              !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+1  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   28.17 0     1           
+2     vib   75    0     1           
+3     vib   213.66      0     1           
+4     vib   289.09      0     1           
+5     vib   1264.36     0     1           
+6     vib   1313.13     0     1           
+7     vib   1586.1      0     1           
+8     vib   1900.29     0     1           
+9     vib   3014.24     0     1           
+10    vib   3086.95     0     1           
+11    vib   3845.69     0     1           
+12    kro   78.72833    1     1     !     K-rotor
+13    jro   2.718065057 1     2     !     2D-rotor
+
+ctst  'TS-280'  1.61377     2.8               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+1  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   25.92 0     1           
+2     vib   69.03 0     1           
+3     vib   199.57      0     1           
+4     vib   269.92      0     1           
+5     vib   1264.04     0     1           
+6     vib   1312.97     0     1           
+7     vib   1586.05     0     1           
+8     vib   1900.73     0     1           
+9     vib   3013.11     0     1           
+10    vib   3085.3      0     1           
+11    vib   3848.66     0     1           
+12    kro   82.20207    1     1     !     K-rotor
+13    jro   2.580157240 1     2     !     2D-rotor
+
+ ctst  'TS-290'  1.82028    2.9              !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+1  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   23.45 0     1           
+2     vib   63.16 0     1           
+3     vib   187.51      0     1           
+4     vib   252.72      0     1           
+5     vib   1263.75     0     1           
+6     vib   1312.81     0     1           
+7     vib   1586  0     1           
+8     vib   1901.13     0     1           
+9     vib   3012.1      0     1           
+10    vib   3083.82     0     1           
+11    vib   3850.86     0     1           
+12    kro   87.2775     1     1     !     K-rotor
+13    jro   2.446684657 1     2     !     2D-rotor
+
+ ctst  'TS-300'  2.00276     3.0              !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+1  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   21.02 0     1           
+2     vib   57.45 0     1           
+3     vib   177.48      0     1           
+4     vib   236.84      0     1           
+5     vib   1263.51     0     1           
+6     vib   1312.67     0     1           
+7     vib   1585.97     0     1           
+8     vib   1901.49     0     1           
+9     vib   3011.2      0     1           
+10    vib   3082.51     0     1           
+11    vib   3852.67     0     1           
+12    kro   95.06415    1     1     !     K-rotor
+13    jro   2.316668007 1     2     !     2D-rotor
+
+ctst  'TS-310'  2.17369     3.1             !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+1  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   19.19 0     1           
+2     vib   52.23 0     1           
+3     vib   169.09      0     1           
+4     vib   222.67      0     1           
+5     vib   1263.33     0     1           
+6     vib   1312.55     0     1           
+7     vib   1585.95     0     1           
+8     vib   1901.84     0     1           
+9     vib   3010.4      0     1           
+10    vib   3081.35     0     1           
+11    vib   3854.15     0     1           
+12    kro   106.19853   1     1     !     K-rotor
+13    jro   2.193068090 1     2     !     2D-rotor
+
+ctst  'TS-320'  2.31915     3.2               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+1  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   17.3  0     1           
+2     vib   46.94 0     1           
+3     vib   161.58      0     1           
+4     vib   210.3 0     1           
+5     vib   1263.16     0     1           
+6     vib   1312.47     0     1           
+7     vib   1585.93     0     1           
+8     vib   1902.18     0     1           
+9     vib   3009.67     0     1           
+10    vib   3080.3      0     1           
+11    vib   3855.41     0     1           
+12    kro   121.30983   1     1     !     K-rotor
+13    jro   2.078328734 1     2     !     2D-rotor
+
+
+ ctst  'TS-330'  2.44760    3.3              !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+1  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   18.49 0     1           
+2     vib   40.30 0     1           
+3     vib   159.32      0     1           
+4     vib   194.72      0     1           
+5     vib   1262.98     0     1           
+6     vib   1312.41     0     1           
+7     vib   1585.90     0     1           
+8     vib   1902.62     0     1           
+9     vib   3009.53     0     1           
+10    vib   3079.90     0     1           
+11    vib   3856.95     0     1           
+12    kro   145.60607   1     1     !     K-rotor
+13    jro   1.96934     1     2     !     2D-rotor
+
+
+ctst  'TS-350'  2.66152     3.5             !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+1  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   10.98 0     1           
+2     vib   30.97 0     1           
+3     vib   143.88      0     1           
+4     vib   182.06      0     1           
+5     vib   1262.59     0     1           
+6     vib   1312.29     0     1           
+7     vib   1585.87     0     1           
+8     vib   1902.92     0     1           
+9     vib   3007.94     0     1           
+10    vib   3077.81     0     1           
+11    vib   3858.33     0     1           
+12    kro   206.51928   1     1     !     K-rotor
+13    jro   1.789073214 1     2     !     2D-rotor
+
+
+ctst  'TS-360'  2.74492      3.6               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+1  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   6.47  0     1           
+2     vib   24.52 0     1           
+3     vib   139.57      0     1           
+4     vib   174.19      0     1           
+5     vib   1262.34     0     1           
+6     vib   1312.22     0     1           
+7     vib   1585.83     0     1           
+8     vib   1903.1      0     1           
+9     vib   3007.41     0     1           
+10    vib   3077.08     0     1           
+11    vib   3859.01     0     1           
+12    kro   269.20175   1     1     !     K-rotor
+13    jro   1.707151428 1     2     !     2D-rotor
+
+
+ ctst  'TS-370'  2.82969    3.7              !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   7.16  0     1           
+2     vib   22.75 0     1           
+3     vib   135.04      0     1           
+4     vib   167.31      0     1           
+5     vib   1262.24     0     1           
+6     vib   1312.23     0     1           
+7     vib   1585.83     0     1           
+8     vib   1903.2      0     1           
+9     vib   3007.12     0     1           
+10    vib   3076.59     0     1           
+11    vib   3859.75     0     1           
+12    kro   289.64355   1     1     !     K-rotor
+13    jro   1.641823415 1     2     !     2D-rotor
+
+
+ ctst  'TS-380'  2.90738     3.8               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   8.65  0     1           
+2     vib   22.11 0     1           
+3     vib   130.57      0     1           
+4     vib   160.95      0     1           
+5     vib   1262.09     0     1           
+6     vib   1312.22     0     1           
+7     vib   1585.81     0     1           
+8     vib   1903.27     0     1           
+9     vib   3006.79     0     1           
+10    vib   3076.08     0     1           
+11    vib   3860.3      0     1           
+12    kro   289.64851   1     1     !     K-rotor
+13    jro   1.583234079 1     2     !     2D-rotor
+
+ ctst  'TS-390'  2.97553     3.9               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   9.6   0     1           
+2     vib   21.42 0     1           
+3     vib   126.24      0     1           
+4     vib   154.85      0     1           
+5     vib   1261.96     0     1           
+6     vib   1312.21     0     1           
+7     vib   1585.78     0     1           
+8     vib   1903.33     0     1           
+9     vib   3006.49     0     1           
+10    vib   3075.61     0     1           
+11    vib   3860.68     0     1           
+12    kro   289.65432   1     1     !     K-rotor
+13    jro   1.527674684 1     2     !     2D-rotor
+
+ ctst  'TS-400' 3.03665     4.0               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   10.39 0     1           
+2     vib   20.85 0     1           
+3     vib   122.19      0     1           
+4     vib   149.17      0     1           
+5     vib   1261.84     0     1           
+6     vib   1312.2      0     1           
+7     vib   1585.75     0     1           
+8     vib   1903.4      0     1           
+9     vib   3006.2      0     1           
+10    vib   3075.19     0     1           
+11    vib   3861.11     0     1           
+12    kro   289.66147   1     1     !     K-rotor
+13    jro   1.424870689 1     2     !     2D-rotor
+
+ ctst  'TS-410'  3.09155   4.1               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   10.93 0     1           
+2     vib   20.29 0     1           
+3     vib   118.35      0     1           
+4     vib   143.86      0     1           
+5     vib   1261.73     0     1           
+6     vib   1312.18     0     1           
+7     vib   1585.73     0     1           
+8     vib   1903.46     0     1           
+9     vib   3005.93     0     1           
+10    vib   3074.79     0     1           
+11    vib   3861.51     0     1           
+12    kro   289.66147   1     1     !     K-rotor
+13    jro   1.424870689 1     2     !     2D-rotor
+
+
+ ctst  'TS-420'  3.14100     4.2               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.26 0     1           
+2     vib   19.69 0     1           
+3     vib   114.72      0     1           
+4     vib   138.81      0     1           
+5     vib   1261.63     0     1           
+6     vib   1312.17     0     1           
+7     vib   1585.71     0     1           
+8     vib   1903.52     0     1           
+9     vib   3005.69     0     1           
+10    vib   3074.43     0     1           
+11    vib   3861.91     0     1           
+12    kro   289.6655    1     1     !     K-rotor
+13    jro   1.377261106 1     2     !     2D-rotor
+
+
+ ctst  'TS-430'  3.18574     4.3               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.54 0     1           
+2     vib   19.18 0     1           
+3     vib   111.29      0     1           
+4     vib   134.09      0     1           
+5     vib   1261.53     0     1           
+6     vib   1312.16     0     1           
+7     vib   1585.69     0     1           
+8     vib   1903.58     0     1           
+9     vib   3005.46     0     1           
+10    vib   3074.09     0     1           
+11    vib   3862.16     0     1           
+12    kro   289.66819   1     1     !     K-rotor
+13    jro   1.331971474 1     2     !     2D-rotor
+
+ ctst  'TS-440'  3.22703     4.4               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.71 0     1           
+2     vib   18.69 0     1           
+3     vib   108.12      0     1           
+4     vib   129.7 0     1           
+5     vib   1261.45     0     1           
+6     vib   1312.15     0     1           
+7     vib   1585.67     0     1           
+8     vib   1903.64     0     1           
+9     vib   3005.24     0     1           
+10    vib   3073.77     0     1           
+11    vib   3862.39     0     1           
+12    kro   289.67067   1     1     !     K-rotor
+13    jro   1.288851816 1     2     !     2D-rotor
+
+ ctst  'TS-450'  3.26337     4.5               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.79 0     1           
+2     vib   18.20 0     1           
+3     vib   105.06      0     1           
+4     vib   125.48      0     1           
+5     vib   1261.36     0     1           
+6     vib   1312.14     0     1           
+7     vib   1585.65     0     1           
+8     vib   1903.68     0     1           
+9     vib   3005.05     0     1           
+10    vib   3073.48     0     1           
+11    vib   3862.61     0     1           
+12    kro   289.6728    1     1     !     K-rotor
+13    jro   1.247762111 1     2     !     2D-rotor
+
+
+ ctst  'TS-460'  3.29725     4.6               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.81 0     1           
+2     vib   17.7  0     1           
+3     vib   102.2 0     1           
+4     vib   121.49      0     1           
+5     vib   1261.28     0     1           
+6     vib   1312.13     0     1           
+7     vib   1585.63     0     1           
+8     vib   1903.74     0     1           
+9     vib   3004.87     0     1           
+10    vib   3073.21     0     1           
+11    vib   3862.83     0     1           
+12    kro   289.67473   1     1     !     K-rotor
+13    jro   1.208587373 1     2     !     2D-rotor
+
+ ctst  'TS-470'  3.32825     4.7               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.92 0     1           
+2     vib   17.36 0     1           
+3     vib   99.49 0     1           
+4     vib   117.73      0     1           
+5     vib   1261.21     0     1           
+6     vib   1312.12     0     1           
+7     vib   1585.62     0     1           
+8     vib   1903.79     0     1           
+9     vib   3004.7      0     1           
+10    vib   3072.96     0     1           
+11    vib   3863.01     0     1           
+12    kro   289.67649   1     1     !     K-rotor
+13    jro   1.171207602 1     2     !     2D-rotor
+
+ ctst  'TS-480'  3.35617     4.8               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.85 0     1           
+2     vib   16.88 0     1           
+3     vib   96.88 0     1           
+4     vib   114.18      0     1           
+5     vib   1261.14     0     1           
+6     vib   1312.11     0     1           
+7     vib   1585.61     0     1           
+8     vib   1903.83     0     1           
+9     vib   3004.54     0     1           
+10    vib   3072.73     0     1           
+11    vib   3863.2      0     1           
+12    kro   289.67816   1     1     !     K-rotor
+13    jro   1.13551282  1     2     !     2D-rotor
+
+ ctst  'TS-490'  3.37067     4.9               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.85 0     1           
+2     vib   16.52 0     1           
+3     vib   94.3  0     1           
+4     vib   110.7 0     1           
+5     vib   1261.08     0     1           
+6     vib   1312.1      0     1           
+7     vib   1585.6      0     1           
+8     vib   1903.88     0     1           
+9     vib   3004.39     0     1           
+10    vib   3072.5      0     1           
+11    vib   3863.34     0     1           
+12    kro   289.67965   1     1     !     K-rotor
+13    jro   1.101413008 1     2     !     2D-rotor
+
+ ctst  'TS-500'  3.41146    5.0               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.73 0     1           
+2     vib   16.07 0     1           
+3     vib   92    0     1           
+4     vib   107.44      0     1           
+5     vib   1261.02     0     1           
+6     vib   1312.09     0     1           
+7     vib   1585.59     0     1           
+8     vib   1903.92     0     1           
+9     vib   3004.26     0     1           
+10    vib   3072.3      0     1           
+11    vib   3863.5      0     1           
+12    kro   289.68109   1     1     !     K-rotor
+13    jro   1.068808184 1     2     !     2D-rotor
+
+ ctst  'TS-550'  3.51    5.5               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.27 0     1           
+2     vib   14.35 0     1           
+3     vib   81.96 0     1           
+4     vib   93.27 0     1           
+5     vib   1260.77     0     1           
+6     vib   1312.07     0     1           
+7     vib   1585.55     0     1           
+8     vib   1904.1      0     1           
+9     vib   3003.71     0     1           
+10    vib   3071.45     0     1           
+11    vib   3864.09     0     1           
+12    kro   289.68557   1     1     !     K-rotor
+13    jro   0.925453825 1     2     !     2D-rotor
+
+ ctst  'TS-560'  3.52    5.6               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.18 0     1           
+2     vib   14.07 0     1           
+3     vib   80.1  0     1           
+4     vib   90.8  0     1           
+5     vib   1260.73     0     1           
+6     vib   1312.06     0     1           
+7     vib   1585.55     0     1           
+8     vib   1904.13     0     1           
+9     vib   3003.62     0     1           
+10    vib   3071.32     0     1           
+11    vib   3864.19     0     1           
+12    kro   289.68607   1     1     !     K-rotor
+13    jro   0.900228911 1     2     !     2D-rotor
+
+ ctst  'TS-570'  3.53    5.7               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   11.06 0     1           
+2     vib   13.77 0     1           
+3     vib   78.34 0     1           
+4     vib   88.46 0     1           
+5     vib   1260.69     0     1           
+6     vib   1312.06     0     1           
+7     vib   1585.54     0     1           
+8     vib   1904.17     0     1           
+9     vib   3003.54     0     1           
+10    vib   3071.18     0     1           
+11    vib   3864.29     0     1           
+12    kro   289.68689   1     1     !     K-rotor
+13    jro   0.876013998 1     2     !     2D-rotor
+
+ ctst  'TS-580'  3.54    5.8               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   10.92 0     1           
+2     vib   13.48 0     1           
+3     vib   76.57 0     1           
+4     vib   86.23 0     1           
+5     vib   1260.65     0     1           
+6     vib   1312.05     0     1           
+7     vib   1585.54     0     1           
+8     vib   1904.19     0     1           
+9     vib   3003.46     0     1           
+10    vib   3071.06     0     1           
+11    vib   3864.37     0     1           
+12    kro   289.68722   1     1     !     K-rotor
+13    jro   0.852754077 1     2     !     2D-rotor
+
+ ctst  'TS-590'  3.55    5.9               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   10.88 0     1           
+2     vib   13.27 0     1           
+3     vib   74.91 0     1           
+4     vib   84.1  0     1           
+5     vib   1260.62     0     1           
+6     vib   1312.05     0     1           
+7     vib   1585.53     0     1           
+8     vib   1904.23     0     1           
+9     vib   3003.38     0     1           
+10    vib   3070.94     0     1           
+11    vib   3864.44     0     1           
+12    kro   289.68758   1     1     !     K-rotor
+13    jro   0.830409147 1     2     !     2D-rotor
+
+ ctst  'TS-600'  3.56   6.0               !!!!!!!!!!!    <= loose TS
+CH3O2
+1.  VTST
+2. (blank comment line)
+3. (blank comment line)
+2  1   1
+0.0   2
+13    HAR   ghz                     
+1     vib   10.77 0     1           
+2     vib   13.01 0     1           
+3     vib   73.38 0     1           
+4     vib   82.05 0     1           
+5     vib   1260.59     0     1           
+6     vib   1312.05     0     1           
+7     vib   1585.53     0     1           
+8     vib   1904.25     0     1           
+9     vib   3003.31     0     1           
+10    vib   3070.83     0     1           
+11    vib   3864.52     0     1           
+12    kro   289.68791   1     1     !     K-rotor
+13    jro   0.808919211 1     2     !     2D-rotor
+
+prod    OH    1.8  10.0
+OH
+a) NIST / JANAF 1998
+b) enthalpy from Ruscic et al., J. Phys. Chem. A, 2006, 110 (21), 6592-6601
+c) (blank comment line)
+1    1    5
+0.0      2
+139.7    2
+32403.   2
+68372.   2
+89420.   2
+2  'HAR'  'AMUA'
+1    vib    3737.76    -84.88    1
+2    jro       0.8914    1.0     2    !Ia
+
+prod ch2o  1.8 10.0
+CH2O
+a)
+b)
+c)
+2 1 1
+0.0 1
+8 har cm-1
+1 vib 2782.0 0 1
+2 vib 1746.0 0 1
+3 vib 1500.0 0 1
+4 vib 1167.0 0 1
+5 vib 2843.0 0 1
+6 vib 1249.0 0 1
+7 kro 9.40530 1 1
+8 jro 1.19796 1 2
+
+
+

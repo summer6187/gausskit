@@ -66,21 +66,45 @@ reproduce the `CCSDT` entries — the prebuilt `database.json` is authoritative 
 ```sh
 make            # gausskit run PES.in --verbose --dry  -> ktools_PES_1/ktools.dat
 make solver     # also runs: ktools ktools.dat         (needs the MultiWell ktools binary)
+make plot       # solver + compare against the MultiWell reference -> compare_kt.png
 make clean
 ```
+
+## Comparison vs the MultiWell reference
+
+`ch2o+oh/` is MultiWell's own bundled `ch2o+oh` ktools example — the deck
+(`ch2o-oh.dat`) and expected output (`ch2o-oh.canonical.test`), copied verbatim from the
+MultiWell distribution (© Barker et al.; see `ch2o+oh/PROVENANCE.txt`). Both use the *same* 11
+temperatures and 1-reactant / 31-TS / 2-product topology as this example; they differ
+only in the molecular data (ours = CCSD(T)//BHandHLYP, the reference = Ali & Barker's
+published values), so agreement is expected to within a small factor, not exactly.
+
+`make plot` runs the solver and `plot_compare.py`, writing **`compare_kt.png`** — the
+forward (dissociation) and reverse (capture) unified-canonical k(T) for both decks plus
+ours/reference ratio panels. This example lands at **geomean ≈ 1.5× the reference for the
+capture rate** (≈ 1.2× for dissociation); the residual is the CCSD(T)//BHLYP-vs-published
+energy difference. (Dropping the `(spin-orbit)` tag below pushes the capture ratio back up
+to ~2.1× — the missing OH spin-orbit state, a clean illustration that it biases only the
+capture direction.)
 
 ## Result
 
 The generated deck runs in ktools and gives a **barrierless** reverse-unified capture
-rate of ≈ 0.4–2.0 × 10⁻⁹ cm³ molecule⁻¹ s⁻¹ over 100–2000 K, with the variational TS
+rate of ≈ 0.3–1.1 × 10⁻⁹ cm³ molecule⁻¹ s⁻¹ over 100–2000 K, with the variational TS
 moving from ~5.4 Å at 100 K inward to ~1.9 Å at high T — the correct qualitative picture.
 
-The external rotational symmetry number is computed **from each geometry** by
-`gausskit.symmetry` (σ=2 on the outer C₂ᵥ surfaces, where OH sits on the C=O axis; σ=1
-on the inner Cs ones), so the deck is correct under `nosymm` with no post-patch. One
-electronic term is still outside gausskit's native output: the OH ²Π₁/₂ spin-orbit state
-(139.7 cm⁻¹), which lowers the low-T rate a further ~1.1×. With it added (the σ treatment
-being identical), the full campaign reproduces Ali–Barker to geomean ~1.5×, grain-
-independent. That spin-orbit-corrected comparison, the Gaussian logs, the reference
-ktools deck, and the k(T)/V(s) figures live in the project's
+Two corrections are now in gausskit's **native** output, so the deck needs no post-patch:
+
+- **External rotational symmetry number** — computed from each geometry by
+  `gausskit.symmetry` (σ=2 on the outer C₂ᵥ surfaces, where OH sits on the C=O axis; σ=1
+  on the inner Cs ones), correct even under `nosymm`.
+- **OH ²Π₁/₂ spin-orbit state** (139.7 cm⁻¹, g=2) — `prod: ch2o + oh(spin-orbit)` pulls
+  OH's electronic ladder from `gausskit.electronic_states` (a small spectroscopic table;
+  these states are *not* in a Gaussian log, which carries only the spin multiplicity).
+  Use the bare name `oh` to write the ground state only. The state lowers the low-T
+  capture by ~1.1× and the high-T by ~1.9× — bringing the capture ratio from ~2.1× down
+  to ~1.5× of Ali–Barker (it does not touch the dissociation rate).
+
+The remaining ~1.5× is the irreducible CCSD(T)//BHLYP-vs-published energy difference. The
+Gaussian logs, the reference ktools deck, and the k(T)/V(s) figures live in the project's
 `multiwell_ktools_example_ch2o_oh/` campaign directory.
