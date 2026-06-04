@@ -61,6 +61,8 @@ class Molecules(Atoms):
         self._multiplicity = None
         self._electronic_energy = None
         self._external_symmetry_number = None
+        self._electronic_states = None
+        self._electronic_comments = None
         self._zpe = None
         self._frequencies = np.array([])
         self._normal_coordinates = np.array([])
@@ -121,6 +123,33 @@ class Molecules(Atoms):
     @external_symmetry_number.setter
     def external_symmetry_number(self, ESN):
         self._external_symmetry_number = ESN
+
+    @property
+    def electronic_states(self):
+        """Low-lying electronic levels as ``[(energy_cm-1, degeneracy), ...]``.
+
+        ``None`` (the default) means only the ground state is written, with degeneracy =
+        spin multiplicity. Set this (e.g. via the ``name(spin-orbit)`` PES.in tag) to
+        write a multi-level electronic partition function. See [[electronic_states]].
+        """
+        return self._electronic_states
+
+    @electronic_states.setter
+    def electronic_states(self, states):
+        self._electronic_states = states
+
+    @property
+    def electronic_comments(self):
+        """Provenance/reference lines written as the species' deck comment lines.
+
+        ``None`` (the default) → generic placeholder comment lines. Set alongside
+        [[electronic_states]] via the ``name(spin-orbit)`` PES.in tag.
+        """
+        return self._electronic_comments
+
+    @electronic_comments.setter
+    def electronic_comments(self, comments):
+        self._electronic_comments = comments
 
     @property
     def krotor(self) -> float:

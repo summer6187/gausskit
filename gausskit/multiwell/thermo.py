@@ -94,11 +94,28 @@ def get_thermo_lines(
 
     lines.append(f"{mol.get_chemical_formula()}")
     if if_ktools:
-        lines.append("1. Comment line")
-        lines.append("2. Comment line")
-        lines.append("3. Comment line")
-    lines.append(f"{mol.external_symmetry_number}   {mol.optical_isomers}   1")
-    lines.append(f" {0.0:<10} {mol.multiplicity}")
+        # exactly three comment lines: a species' provenance/reference lines (e.g. set
+        # with electronic_states via the name(spin-orbit) tag) if present, else generic.
+        comments = getattr(mol, "electronic_comments", None)
+        if comments:
+            for c in (list(comments) + ["", "", ""])[:3]:
+                lines.append(c)
+        else:
+            lines.append("1. Comment line")
+            lines.append("2. Comment line")
+            lines.append("3. Comment line")
+    # electronic states: a tabulated multi-level ladder (e.g. spin-orbit, set via the
+    # name(spin-orbit) PES.in tag) if present, else the ground level only with
+    # degeneracy = spin multiplicity (a Gaussian log carries nothing more -- see
+    # gausskit.electronic_states).
+    elec_states = getattr(mol, "electronic_states", None)
+    if elec_states:
+        lines.append(f"{mol.external_symmetry_number}   {mol.optical_isomers}   {len(elec_states)}")
+        for energy, degeneracy in elec_states:
+            lines.append(f" {energy:<10} {degeneracy}")
+    else:
+        lines.append(f"{mol.external_symmetry_number}   {mol.optical_isomers}   1")
+        lines.append(f" {0.0:<10} {mol.multiplicity}")
 
     mominert_outfile = f"{dummy_name}.coords.out"
     krot, ad_rot = get_rotor(thermo_path / mominert_outfile)
