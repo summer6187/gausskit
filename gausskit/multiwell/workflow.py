@@ -7,7 +7,7 @@ from gausskit.multiwell.sctst import (
     write_parsctst, write_bdens, run_parsctst, run_bdens, fix_crp_file,
 )
 from gausskit.multiwell.densum import write_densum, run_densum
-from gausskit.multiwell.ktools import write_ktools
+from gausskit.multiwell.ktools import write_ktools, run_ktools
 from gausskit.multiwell.thermo import (
     read_electronic_partition_function, write_thermo, write_single_thermo, run_thermo
 )
@@ -168,20 +168,31 @@ def run_PES_densdata(
         for n, PES_num in enumerate(PES_data):
             for item in PES_data[PES_num]["PES_items"]:
                 if "Mol_hindrot" in PES_data[PES_num]["PES_items"][item]:
-                    hindrot_item_Mol_dict[item] = PES_data[PES_num]["PES_items"][item][
-                        "Mol_hindrot"
-                    ]
-                    mol = PES_data[PES_num]["PES_items"][item]["Mol"]
-                    mol.hinderedrotor
+                    # the populated rotor data lives on Mol_hindrot (the molecule
+                    # parsed from the hindered-rotor scan); the plain "Mol" has an
+                    # empty default Hinderedrotor.
+                    mol_hindrot = PES_data[PES_num]["PES_items"][item]["Mol_hindrot"]
+                    hindrot_item_Mol_dict[item] = mol_hindrot
                     dummy_name = item
 
-                    datfile = f"{dummy_name}.coords"
-                    outfile = f"{dummy_name}.coords.out"
-                    write_mominert(mol, mol.hinderedrotor, densdata_path / datfile, verbose=verbose)
-                    run_mominert(densdata_path / datfile, densdata_path / outfile, verbose=verbose)
-                    # read moment of inertia from fname.coords.out files
-                    _, _, _, reduced_moment_of_inertia = read_mominert_out(densdata_path / outfile, verbose=verbose)
-                    hindrot_item_reduced_mominert_dict[item] = reduced_moment_of_inertia
+                    # extra mominert pass for the internal rotor; use distinct
+                    # filenames so we do not overwrite the principal-moment
+                    # output produced by the first mominert pass above.
+                    datfile = f"{dummy_name}.hindrot.coords"
+                    outfile = f"{dummy_name}.hindrot.coords.out"
+                    write_mominert(
+                        mol_hindrot,
+                        mol_hindrot.hinderedrotor,
+                        densdata_path / datfile,
+                        verbose=verbose,
+                    )
+                    if not dry:
+                        run_mominert(densdata_path / datfile, densdata_path / outfile, verbose=verbose)
+                        # read reduced moment of inertia from the .out file
+                        _, _, _, reduced_moment_of_inertia = read_mominert_out(
+                            densdata_path / outfile, verbose=verbose
+                        )
+                        hindrot_item_reduced_mominert_dict[item] = reduced_moment_of_inertia
 
     return hindrot_item_reduced_mominert_dict
 
@@ -228,11 +239,11 @@ def run_ktools_workflow(
         datfile=ktools_path.absolute() / datfile,
         verbose=verbose,
     )
-    # if not dry:
-    #     run_ktools(
-    #         datfile=ktools_path.absolute() / datfile,
-    #         verbose=verbose,
-    #     )
+    if not dry:
+        run_ktools(
+            datfile=ktools_path.absolute() / datfile,
+            verbose=verbose,
+        )
 
 def run_thermo_workflow(
     PES_data:dict,

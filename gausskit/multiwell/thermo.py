@@ -47,6 +47,7 @@ def get_thermo_lines(
     if_anharm:bool = False,
     if_hinderedrotor:bool = False,
     hindrot_item_Mol_dict:dict = {},
+    hindrot_item_reduced_mominert_dict:dict = {},
 ):
     """Generate the block describing ``mol`` for a ``thermo`` input file.
 
@@ -70,7 +71,10 @@ def get_thermo_lines(
     lines = []
 
     if mol_type is not None:
-        lines.append(f"{mol_type}    {dummy_name}    {forwards_barrier:.4f}")
+        # ktools path passes forwards_barrier as a preformatted "energy   bond" string;
+        # the thermo path passes a float. Handle both.
+        bar = forwards_barrier if isinstance(forwards_barrier, str) else f"{forwards_barrier:.4f}"
+        lines.append(f"{mol_type}    {dummy_name}    {bar}")
     else:
         if mol.ts:
             # if no tunneling, set img_freq and backwards_barrier to 0
@@ -267,6 +271,7 @@ def write_thermo(
             if_anharm = if_anharm,
             if_hinderedrotor = if_hinderedrotor,
             hindrot_item_Mol_dict = hindrot_item_Mol_dict,
+            hindrot_item_reduced_mominert_dict = hindrot_item_reduced_mominert_dict,
         )
 
         reaction_lines += lines
