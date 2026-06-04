@@ -17,6 +17,7 @@ from gausskit.gaussian.anharm import (
 )
 from gausskit.gaussian.hindrot import Hinderedrotor, read_hindrot
 from gausskit.degrees_of_freedom.vibration import Harmonic
+from gausskit.symmetry import external_symmetry_number
 import gausskit.rdkit as rdkit
 
 
@@ -334,8 +335,12 @@ class Molecules(Atoms):
         # sanity check
         # check if the charge and multiplicity make sense? Do we really need this?
 
-        # set external symmetry number
-        ESN = read_external_symmetry_number(filename, n_atoms=len(mol.symbols))
+        # set external symmetry number: compute from the geometry (correct even
+        # under nosymm, where Gaussian reports 1 for every species), and fall
+        # back to the value parsed from the log if the structure calc fails.
+        ESN = external_symmetry_number(mol)
+        if ESN is None:
+            ESN = read_external_symmetry_number(filename, n_atoms=len(mol.symbols))
         mol.external_symmetry_number = ESN
 
         # set energy
