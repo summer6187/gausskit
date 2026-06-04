@@ -72,15 +72,15 @@ make clean
 ## Result
 
 The generated deck runs in ktools and gives a **barrierless** reverse-unified capture
-rate of ≈ 0.7–2.0 × 10⁻⁹ cm³ molecule⁻¹ s⁻¹ over 100–2000 K, with the variational TS
+rate of ≈ 0.4–2.0 × 10⁻⁹ cm³ molecule⁻¹ s⁻¹ over 100–2000 K, with the variational TS
 moving from ~5.4 Å at 100 K inward to ~1.9 Å at high T — the correct qualitative picture.
 
-This example ships gausskit's **native** output. Two physics corrections are *not*
-applied here and are left for a later commit: the external rotational symmetry number
-is the `nosymm`-parsed value (σ=1 on the outer C₂ᵥ surfaces, where it should be 2), and
-the OH ²Π₁/₂ spin-orbit state (139.7 cm⁻¹) is not added. Both raise the low-T rate, so
-the native deck sits a few-fold above Ali–Barker. The fully-corrected quantitative
-comparison (σ=2 on the C₂ᵥ surfaces + the spin-orbit state → geomean ~1.5× of
-Ali–Barker, grain-independent), together with the Gaussian logs, the reference ktools
-deck, and the k(T)/V(s) figures, lives in the project's
+The external rotational symmetry number is computed **from each geometry** by
+`gausskit.symmetry` (σ=2 on the outer C₂ᵥ surfaces, where OH sits on the C=O axis; σ=1
+on the inner Cs ones), so the deck is correct under `nosymm` with no post-patch. One
+electronic term is still outside gausskit's native output: the OH ²Π₁/₂ spin-orbit state
+(139.7 cm⁻¹), which lowers the low-T rate a further ~1.1×. With it added (the σ treatment
+being identical), the full campaign reproduces Ali–Barker to geomean ~1.5×, grain-
+independent. That spin-orbit-corrected comparison, the Gaussian logs, the reference
+ktools deck, and the k(T)/V(s) figures live in the project's
 `multiwell_ktools_example_ch2o_oh/` campaign directory.
