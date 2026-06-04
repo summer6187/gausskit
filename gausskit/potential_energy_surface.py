@@ -341,20 +341,27 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
         ktools_list = list(Ktools_method["pes"].split())
         ktools_dir = Ktools_method["dir"]
         ktools_temperatures = Ktools_method["temperatures"]
-        if "trail_modes" in Ktools_method:
-            ktools_trial_modes = [int(n) for n in Ktools_method["trial_modes"].split()]
-        else:
-            ktools_trial_modes = []
 
-        if "bonds" in Ktools_method:
-            ktools_bonds = [i for i in Ktools_method["bonds"].split()]
-        else:
-            ktools_bonds = []
+        def _first(d, *keys):
+            for k in keys:
+                if k in d:
+                    return d[k]
+            return None
+
+        # reaction-coordinate mode index removed at each trial transition state
+        # (long form 'reaction_coordinate_modes' or short 'rc_modes')
+        modes_val = _first(Ktools_method, "reaction_coordinate_modes", "rc_modes")
+        ktools_rc_modes = [int(n) for n in modes_val.split()] if modes_val else []
+
+        # reaction-coordinate distance (Angstrom) at each surface
+        # (long form 'reaction_coordinate_distances' or short 'rc_distances')
+        dist_val = _first(Ktools_method, "reaction_coordinate_distances", "rc_distances")
+        ktools_rc_distances = [i for i in dist_val.split()] if dist_val else []
 
         ktools_methods = {
-            "bonds": ktools_bonds,
+            "rc_distances": ktools_rc_distances,
             "temperatures": ktools_temperatures,
-            "trial_modes": ktools_trial_modes,
+            "rc_modes": ktools_rc_modes,
             "tunneling": False,
             "hinderedrotor": False,
             "anharm": False,

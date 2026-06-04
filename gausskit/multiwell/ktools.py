@@ -1,8 +1,42 @@
 import os
+import copy
+import subprocess
 from pathlib import Path
 import numpy as np
 
 from gausskit.multiwell.thermo import get_thermo_lines, get_thermo_head_lines
+from gausskit.settings import Configuration
+
+config = Configuration()
+
+module = "[Ktools]"
+
+
+def get_ktools_head_lines(
+    title, temp, rcnt, ntts, pcnt, whatdo="nosavefiles",
+    emax=40000, egrain=2.5, jmax=500, jgrain=1,
+    imax1=501, isize=1002, emax2=20000.0,
+):
+    """Build the 9-line KTOOLS control header (order per ktools read_input.f).
+
+    NOTE: this is DISTINCT from the 4-line THERMO header. KTOOLS requires
+    title / 'KCAL MCC' / whatdo / Emax Egrain / Jmax Jgrain /
+    Imax1 Isize Emax2 / Nt / temperatures / 'Nreac Ntts Nprod'.
+    """
+    nt = len(temp.split())
+    temps = " ".join(t if "." in t else t + "." for t in temp.split())
+    return [
+        f"{title}",
+        "KCAL   MCC",
+        f"{whatdo}",
+        f"{emax} {egrain}",
+        f"{jmax} {jgrain}",
+        f"{imax1}  {isize}   {emax2}",
+        f"{nt}",
+        f"{temps}",
+        f"{rcnt} {ntts} {pcnt}",
+    ]
+
 
 def write_ktools(
     PES_data,
@@ -24,13 +58,19 @@ def write_ktools(
         verbose (bool, optional): Enable progress messages. Defaults to
             ``False``.
 
+    Note:
+        ``thermo_methods`` carries two reaction-coordinate fields with *different*
+        length conventions: ``rc_distances`` has one entry per PES surface
+        (reac + every trial TS + prod) because it is indexed per group, while
+        ``rc_modes`` has one entry per trial TS only.
+
     Returns:
         None
     """
 
     # Parse thermo_methods information
-    bonds = thermo_methods["bonds"]
-    trial_modes = thermo_methods["trial_modes"]
+    rc_distances = thermo_methods["rc_distances"]
+    rc_modes = thermo_methods["rc_modes"]
     if_tunneling = thermo_methods["tunneling"]
     if_hinderedrotor = thermo_methods["hinderedrotor"]
     if_anharm = thermo_methods["anharm"]
@@ -38,20 +78,41 @@ def write_ktools(
     thermo_temp = thermo_methods["temperatures"]
     thermo_pressure = thermo_methods["pressures"]
 
-    # remove trial modes
-    if trial_modes:
-        # make sure the number of trial modes matches trial items
-        trial_items = [n for n in PES_data if str.isnumeric(n)]
-        if len(trial_modes) != len(trial_items):
-            print("The number of trial_modes doesn't match trial items!")
-            print("Trial modes won't be used!")
-
-        for n, (PES_num, trial_mode) in enumerate(zip(trial_items, trial_modes)):
+    # remove the reaction-coordinate mode from each trial transition state.
+    # If rc_modes is not given in PES.in, default to dropping mode 0 (the
+    # lowest-frequency mode) at every trial surface.
+    trial_items = [n for n in PES_data if str.isnumeric(n)]
+    if not rc_modes:
+        rc_modes = [0] * len(trial_items)
+        print("[Ktools] rc_modes not set; defaulting to drop mode 0 (lowest) at each trial TS")
+    if len(rc_modes) != len(trial_items):
+        print("The number of rc_modes doesn't match trial items!")
+        print("rc_modes won't be used!")
+    else:
+        for PES_num, rc_mode in zip(trial_items, rc_modes):
             for item in PES_data[PES_num]["PES_items"]:
-                Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
-                print(f"Remove {trial_mode} in {item} {Mol.frequencies[trial_mode]}")
-                Mol.frequencies = np.delete(Mol.frequencies, trial_mode)
+                # deep-copy before truncating: PES_data["Mol"] is a direct reference
+                # to the database Molecule, so mutating it in place would corrupt a
+                # subsequent [Thermo]/[Multiwell] run on the same species/section.
+                Mol = copy.deepcopy(PES_data[PES_num]["PES_items"][item]["Mol"])
+                print(f"Remove {rc_mode} in {item} {Mol.frequencies[rc_mode]}")
+                Mol.frequencies = np.delete(Mol.frequencies, rc_mode)
                 PES_data[PES_num]["PES_items"][item]["Mol"] = Mol
+
+    # rc_distances is indexed per PES group (reac + every trial TS + prod), so it must
+    # carry one entry per surface. Guard explicitly instead of letting rc_distances[n]
+    # raise a bare IndexError mid-write (rc_modes, by contrast, is per trial TS only).
+    if not rc_distances:
+        raise ValueError(
+            "[Ktools] rc_distances (reaction_coordinate_distances) is required: "
+            "one distance per surface (reac + trial TSs + prod)"
+        )
+    if len(rc_distances) != len(PES_data):
+        raise ValueError(
+            f"[Ktools] rc_distances has {len(rc_distances)} entries but the PES has "
+            f"{len(PES_data)} surfaces (reac + trial TSs + prod); supply one distance "
+            "per surface (rc_modes is separate: one per trial TS only)"
+        )
 
     if "default" in thermo_temp:
         temp = "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000"
@@ -84,8 +145,12 @@ def write_ktools(
             else:
                 mol_type = "ctst"
             item_mol_type.append(mol_type)
-            forwards_barrier = PES_data[PES_num]["PES_energy"]
-            item_barrier.append(f"{forwards_barrier:.4f}   {bonds[n]}")
+            # ktools SUMS the per-fragment energies of a multi-fragment block
+            # (e.g. prod: A + B). Split the block energy across its fragments so
+            # they sum back to the true asymptote instead of doubling it.
+            n_frag = len(PES_data[PES_num]["PES_items"])
+            forwards_barrier = PES_data[PES_num]["PES_energy"] / n_frag
+            item_barrier.append(f"{forwards_barrier:.4f}   {rc_distances[n]}")
             # break
 
     # prepare hindered rot calculations
@@ -99,7 +164,12 @@ def write_ktools(
                         "Mol_hindrot"
                     ]
 
-    reaction_lines = get_thermo_head_lines(temp, len(item_list))
+    rcnt = item_mol_type.count("reac")
+    pcnt = item_mol_type.count("prod")
+    ntts = len(item_mol_type) - rcnt - pcnt
+    reaction_lines = get_ktools_head_lines(
+        "ktools input generated by gausskit", temp, rcnt, ntts, pcnt
+    )
 
     for n, (dummy_name, mol_type, Mol, barrier) in enumerate(zip(item_list, item_mol_type, item_Mol_list, item_barrier)):
         mol = Mol
@@ -116,6 +186,7 @@ def write_ktools(
             if_anharm = if_anharm,
             if_hinderedrotor = if_hinderedrotor,
             hindrot_item_Mol_dict = hindrot_item_Mol_dict,
+            hindrot_item_reduced_mominert_dict = hindrot_item_reduced_mominert_dict,
         )
 
         reaction_lines += lines
@@ -127,3 +198,30 @@ def write_ktools(
         for line in reaction_lines:
             f.write(f"{line} {os.linesep}")
         f.write(f"  {os.linesep}")
+
+
+def run_ktools(
+    datfile:Path = Path("ktools.dat"),
+    verbose:bool = False,
+):
+    """Execute the ``ktools`` program using ``datfile`` as input.
+
+    ``ktools`` takes the input file name as a command-line argument and writes
+    its outputs (``<base>.canonical``, ``.veff``, ``.log`` ...) next to it, so
+    there is no output file to relocate.
+
+    Args:
+        datfile (Path): ``ktools`` input file.
+        verbose (bool, optional): Display the executed command. Defaults to
+            ``False``.
+
+    Returns:
+        None
+    """
+
+    cwd = datfile.parent.absolute()
+
+    command = f"cd {cwd}; " + config.machine.ktools_command + f" {datfile.name}"
+    if verbose:
+        print(f"{module:11} Run command: {command}")
+    subprocess.call(command, shell=True)

@@ -58,9 +58,9 @@ def write_mominert(
                 )
             )
             hindrot_lines.append("")
-        hindrot_lines = [j + "\n" for j in internal_rotor_coords] # FIXME: wtf???
 
         # insert rotor coords information to the file
+        # (each entry gets its line separator appended in the write loop below)
         lines += hindrot_lines
 
     # this is finishing lines

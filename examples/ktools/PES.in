@@ -1,21 +1,47 @@
 [Method]
-Eele: M062X
-ZPE: M062X
+Eele: CCSDT
+ZPE: BHandHLYP
 Anharm: False
 database: database.json
 
 [Ktools]
 PES: PES_1
 dir: ./
-bonds: 1.5 2.5 3.5
-trial_modes: 7 7 7 7
-temperatures: default
+rc_distances: 1.922 2.500 2.600 2.700 2.800 2.900 3.000 3.100 3.200 3.300 3.400 3.500 3.600 3.700 3.800 3.900 4.000 4.100 4.200 4.300 4.400 4.500 4.600 4.700 4.800 4.900 5.000 5.100 5.200 5.300 5.400 5.500 10.0
+rc_modes: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+temperatures: 100 125 150 175 200 250 300 400 500 1000 2000
 
 [PES_1]
-reac: _OHRSide_IM_Scan_10
-1: _OHRSide_IM_Scan_11
-2: _OHRSide_IM_Scan_12
-3: _OHRSide_IM_Scan_13
-4: _OHRSide_IM_Scan_14
-prod: _OHRSide_IM_Scan_15
-
+reac: prc
+1: rp_25
+2: rp_26
+3: rp_27
+4: rp_28
+5: rp_29
+6: rp_30
+7: rp_31
+8: rp_32
+9: rp_33
+10: rp_34
+11: rp_35
+12: rp_36
+13: rp_37
+14: rp_38
+15: rp_39
+16: rp_40
+17: rp_41
+18: rp_42
+19: rp_43
+20: rp_44
+21: rp_45
+22: rp_46
+23: rp_47
+24: rp_48
+25: rp_49
+26: rp_50
+27: rp_51
+28: rp_52
+29: rp_53
+30: rp_54
+31: rp_55
+prod: ch2o + oh

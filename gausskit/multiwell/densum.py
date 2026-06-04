@@ -41,7 +41,9 @@ def get_degrees_of_freedom_lines(
     lines = []
 
     rottype = "vib"
-    # indexing from 1
+    # indexing from 1; init so the K-rotor/2D-rotor blocks below still work
+    # when there are no vibrations (e.g. a monatomic such as the H product).
+    i = 0
     for i in range(1, len(nonimg_freq)+1):
         lines.append(f" {i:3d}   {rottype:6} {nonimg_freq[i-1]:12.4f}   0.0   1")
 
