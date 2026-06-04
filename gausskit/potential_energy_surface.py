@@ -2,9 +2,12 @@ import argparse
 from pathlib import Path
 import configparser
 import ast
+import copy
+import re
 
 from ase.units import Hartree, kcal, mol
 from gausskit.database import load_database
+from gausskit.electronic_states import electronic_states_for, electronic_comments_for
 from gausskit.multiwell.workflow import run_thermo_workflow, run_multiwell_workflow, run_ktools_workflow
 from gausskit._defaults import trail_line
 
@@ -186,15 +189,37 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
             elif item == "-":
                 plus_minus = "-"
             else:
-                # when item is not + or -, then it's a Mol
-                E_0K, ZPE_Mol = get_item_energy(database[item], PES_methods)
+                # when item is not + or -, then it's a Mol.
+                # Optional "(spin-orbit)" tag, e.g. oh(spin-orbit): strip it, resolve the
+                # base species in the database, and attach its tabulated low-lying
+                # electronic states (spectroscopic; not available from a Gaussian output).
+                spin_orbit = False
+                base = item
+                so_match = re.match(r"^(.*)\((?:spin[-_ ]?orbit|so)\)$", item, re.IGNORECASE)
+                if so_match:
+                    base, spin_orbit = so_match.group(1), True
+
+                E_0K, ZPE_Mol = get_item_energy(database[base], PES_methods)
+                if spin_orbit:
+                    # deepcopy so we never mutate the shared database Molecules
+                    ZPE_Mol = copy.deepcopy(ZPE_Mol)
+                    states = electronic_states_for(ZPE_Mol)
+                    if states:
+                        ZPE_Mol.electronic_states = states
+                        ZPE_Mol.electronic_comments = electronic_comments_for(ZPE_Mol)
+                    else:
+                        print(
+                            f"WARNING: no tabulated electronic/spin-orbit states for "
+                            f"'{base}' ({ZPE_Mol.get_chemical_formula()}); writing the "
+                            f"ground state only. Add it to gausskit.electronic_states."
+                        )
                 if ZPE_Mol.ts:
                     dummy_name = f"TS{n_mol}"
                 else:
                     dummy_name = f"Mol{n_mol}"
                 n_mol += 1
                 PES_item_dict[dummy_name] = {}
-                PES_item_dict[dummy_name]["mol_name"] = item
+                PES_item_dict[dummy_name]["mol_name"] = base
                 PES_item_dict[dummy_name]["plus_minus"] = plus_minus
                 PES_item_dict[dummy_name]["Mol"] = ZPE_Mol
 
@@ -202,19 +227,19 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
                 if any(
                     [
                         item_method.endswith("hindrot")
-                        for item_method in database[item].keys()
+                        for item_method in database[base].keys()
                     ]
                 ):
                     matched_methods = match_method(
-                        database[item].keys(), PES_methods["ZPE_method"] + "_hindrot"
+                        database[base].keys(), PES_methods["ZPE_method"] + "_hindrot"
                     )
                     hindrot_method = matched_methods[0]
-                    PES_item_dict[dummy_name]["Mol_hindrot"] = database[item][
+                    PES_item_dict[dummy_name]["Mol_hindrot"] = database[base][
                         hindrot_method
                     ]
 
                 PES_item_dict[dummy_name]["item_energy"] = E_0K * Hartree / (kcal / mol)
-                item_ts = get_item_ts(database[item], PES_methods)
+                item_ts = get_item_ts(database[base], PES_methods)
                 PES_item_dict[dummy_name]["ts"] = item_ts
                 if item_ts:
                     final_ts = True
