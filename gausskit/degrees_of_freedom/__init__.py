@@ -1,3 +1,6 @@
+# DOF must be imported before Harmonic: harmonic.py imports DOF from the leaf
+# submodule (not this package), so the order here is no longer load-bearing, but
+# keep DOF first to match the dependency direction.
 from gausskit.degrees_of_freedom.degrees_of_freedom import DOF
 from gausskit.degrees_of_freedom.harmonic import Harmonic
 

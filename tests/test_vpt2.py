@@ -11,11 +11,15 @@ import gzip
 import atexit
 import tempfile
 import numpy as np
-from ase.units import Bohr
+from ase.units import Bohr, Hartree
+from gausskit.gaussian.fchk import FCHK as FCHKReader
+from gausskit.molecules import Molecules
+from gausskit.degrees_of_freedom.harmonic import Harmonic
 from gausskit.degrees_of_freedom.vpt2 import VPT2
 
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-REF = json.load(open(os.path.join(DATA, "cf2cl2na_ref.json")))
+with open(os.path.join(DATA, "cf2cl2na_ref.json")) as _ref_f:
+    REF = json.load(_ref_f)
 
 # The fixture is gzipped only to keep the repo small; FCHK itself reads plain
 # fchk/log files (production never gunzips). Decompress to a temp .fchk here.
@@ -38,9 +42,13 @@ def test_loads_anharmonic():
 
 
 def test_frequencies_match_gaussian():
+    # Compare in the object's NATIVE mode order (not sorted) so a mode-ordering
+    # regression is caught: the reference is ascending and the native order must be
+    # too (index 0 = imaginary reaction coordinate, < 0).
     v = _v()
-    ours = sorted(float(v.frequency(i)) for i in range(v.n_modes))
+    ours = [float(v.frequency(i)) for i in range(v.n_modes)]
     assert np.allclose(ours, REF["frequencies_cm"], atol=0.01)
+    assert ours[0] < 0                         # imaginary mode is first
 
 
 def test_rotational_constants_match_gaussian():
@@ -73,6 +81,27 @@ def test_quartic_diagonal_reliable_modes():
     assert np.allclose(ours[rel], G[rel], atol=0.02)
 
 
+def test_cubic_diagonal_reliable_modes():
+    # 3rd-deriv (2nd-order cubic) chi_ii vs Gaussian for the reliable modes. This is
+    # the highest-bug-density piece (Fermi-resonance branching + complex-frequency
+    # imaginary-mode handling); the unreliable soft/RC modes (0,1,2) are excluded.
+    v = _v()
+    ours = np.diag(v.x_matrix_cubic())
+    G = np.diag(np.array(REF["x_3rd"]))
+    rel = slice(3, 12)
+    assert np.allclose(ours[rel], G[rel], atol=1.0)
+
+
+def test_total_x_matrix_diagonal_reliable_modes():
+    # Combined deliverable X = quartic + cubic + Coriolis vs Gaussian's total on the
+    # reliable modes -- regression-locks the full x_matrix() path end to end.
+    v = _v()
+    ours = np.diag(v.x_matrix())
+    G = np.diag(np.array(REF["x_total"]))
+    rel = slice(3, 12)
+    assert np.allclose(ours[rel], G[rel], atol=1.0)
+
+
 def test_displace_project_roundtrip():
     v = _v()
     assert np.allclose(v.displace_along_mode(2, 0.0).get_positions(), v.positions0)
@@ -95,6 +124,68 @@ def test_unreliable_fc_recorded():
     # recorded in the reference so the test documents the irreducible artifacts.
     assert len(REF["unreliable_fc"]) == 4
     assert ["cubic", [11, 4, 12]] in REF["unreliable_fc"]
+
+
+def _plain_harmonic():
+    """A base Harmonic (not VPT2) built from the fixture, so the merged base-class
+    methods run on Harmonic's OWN mass_weighted_modes basis -- the path VPT2's
+    _modes override otherwise bypasses."""
+    fc = FCHKReader(FCHK)
+    mol = Molecules(numbers=fc.atomic_numbers, positions=fc.coordinates * Bohr)
+    return Harmonic(mol, fc.hessian * (Hartree / Bohr / Bohr), fc.masses)
+
+
+def test_plain_harmonic_displace_project_roundtrip():
+    h = _plain_harmonic()
+    L = h.mass_weighted_modes()
+    assert L.shape[0] == 3 * len(h.masses) - 6      # 3N-6 vibrational modes
+    i = 8                                           # a vibrational mode
+    Q = h.project_onto_modes(h.displace_along_mode(i, 1.5))
+    assert abs(Q[i] - 1.5) < 1e-6
+    assert np.sqrt((Q**2).sum() - Q[i]**2) < 1e-9   # displacement is pure in mode i
+
+
+def test_vibrational_modes_abs_retains_imaginary():
+    # The TS-safe set keeps 3N-6 modes by smallest |w2|, so the imaginary reaction
+    # coordinate (large negative w2) is RETAINED -- unlike the naive [6:] slice.
+    h = _plain_harmonic()
+    w2, modes = h.vibrational_modes_abs()
+    n3 = 3 * len(h.masses)
+    assert len(w2) == n3 - 6
+    assert modes.shape == (n3 - 6, n3)
+    assert w2.min() < 0                             # imaginary mode retained
+
+
+def test_harmonic_only_fchk():
+    # Strip the 3rd/4th-derivative block (the last block in the fixture) so the reader
+    # hits the harmonic-only branch: cubic/quartic = None, is_anharmonic False, while
+    # harmonic frequencies/masses still resolve.
+    with open(FCHK) as f:
+        lines = f.readlines()
+    cut = next(k for k, l in enumerate(lines)
+               if l.startswith("Cartesian 3rd/4th derivatives"))
+    tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".fchk", delete=False)
+    tmp.writelines(lines[:cut]); tmp.close()
+    atexit.register(lambda: os.path.exists(tmp.name) and os.unlink(tmp.name))
+    vh = VPT2.from_fchk(tmp.name)
+    assert not vh.is_anharmonic
+    assert vh.cubic is None and vh.quartic is None
+    assert float(vh.frequency(0)) < 0               # harmonic frequencies still work
+    assert len(vh.masses) == vh.fchk.n_atoms
+
+
+def test_lazy_vpt2_package_export():
+    # VPT2 is exported lazily from the package (to dodge the molecules<->Harmonic
+    # circular import); the package surface must resolve to the same class.
+    import gausskit.degrees_of_freedom as ddf
+    from gausskit.degrees_of_freedom import VPT2 as V2
+    assert V2 is VPT2 and ddf.VPT2 is VPT2
+    try:
+        ddf.NoSuchAttr
+        raised = False
+    except AttributeError:
+        raised = True
+    assert raised
 
 
 if __name__ == "__main__":

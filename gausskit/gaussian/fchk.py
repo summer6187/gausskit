@@ -127,7 +127,8 @@ class FCHK:
 
 
 if __name__ == "__main__":
-    f = FCHK("CF2Cl2_Na_TS_for_NaCl_bond_anharm.fchk")
+    import sys
+    f = FCHK(sys.argv[1])
     print("n_atoms", f.n_atoms, "n_modes", f.n_modes)
     print("Z", f.atomic_numbers, "masses", np.round(f.masses, 3))
     print("hessian", f.hessian.shape, "vib_modes", f.vib_modes.shape,

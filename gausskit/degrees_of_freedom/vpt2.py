@@ -64,7 +64,7 @@ class VPT2(Harmonic):
     def n_modes(self):
         return self.gaussian_modes.shape[0]
 
-    # ---- force-derivative accessors (incl. McUtils-compatible aliases) --------
+    # ---- force-derivative accessors (alternative tensor shapes) ---------------
     @property
     def third_deriv_array(self):
         """Alias of `cubic`: d3V/dQ_i dx_A dx_B, (n_modes, 3N, 3N)."""
@@ -72,7 +72,7 @@ class VPT2(Harmonic):
 
     @property
     def fourth_deriv_array(self):
-        """McUtils-shaped quartic (n_modes, n_modes, 3N, 3N), diagonal in the mode legs."""
+        """Quartic as a full (n_modes, n_modes, 3N, 3N) tensor, diagonal in the mode legs."""
         m, n3 = self.cubic.shape[0], self.cubic.shape[1]
         U = np.zeros((m, m, n3, n3))
         for i in range(m):
@@ -85,12 +85,12 @@ class VPT2(Harmonic):
         return self.fchk.vib_modes
 
     @staticmethod
-    def read_vib_modes_fchk(fchk_path, natoms=None):
+    def read_vib_modes_fchk(fchk_path):
         """Standalone Gaussian-normal-modes reader (kept for convenience)."""
         return FCHK(fchk_path).vib_modes
 
-    # `project_onto_modes(atoms)` (inherited from Harmonic) is the object form of
-    # the old free function `geometry_to_normal`.
+    # `project_onto_modes(atoms)` (inherited from Harmonic) maps a geometry to its
+    # normal coordinates Q.
 
     # ---- diagonal Taylor coefficients along a single mode (analytic) ----------
     def _dxdQ(self, i):
@@ -133,10 +133,9 @@ class VPT2(Harmonic):
 
     # ---- mode coupling -------------------------------------------------------
     def cubic_coupling(self, i, j, k):
-        """Reduced cubic force constant phi_ijk-like contraction phi_{i,jk}
-        = sum_AB (dx/dQ_i) is the first (normal) leg; jk transformed: the cubic
-        tensor's mode leg is i, so we contract its two Cartesian legs with modes j,k:
-        d3V/dQ_i dQ_j dQ_k  (eV in A*amu^1/2 units)."""
+        """d3V/dQ_i dQ_j dQ_k (eV): the cubic tensor's mode leg is i; contract its
+        two Cartesian legs with modes j and k via dx/dQ. (Raw mixed third derivative,
+        not the reduced dimensionless phi_ijk -- see cubic_normal() for that.)"""
         return np.einsum("ab,a,b->", self.cubic[i], self._dxdQ(j), self._dxdQ(k))
 
     def mode_coupling(self, i, j):
@@ -148,7 +147,7 @@ class VPT2(Harmonic):
     # ---- Taylor PES ----------------------------------------------------------
     def taylor_energy(self, displacement, order=4):
         """Taylor PES V (eV, rel. to the reference) for a Cartesian displacement
-        (natoms,3) array or an Atoms. Reproduces the corrected nm_scan reconstruction."""
+        (natoms,3) array or an Atoms, via the 2nd/3rd/4th-order force field."""
         if hasattr(displacement, "get_positions"):
             d = (np.asarray(displacement.get_positions()) - self.positions0).reshape(-1)
         else:

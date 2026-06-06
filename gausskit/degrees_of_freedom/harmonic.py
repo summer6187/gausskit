@@ -6,7 +6,10 @@ import numpy as np
 
 from ase import Atoms
 from ase.units import Bohr, Hartree
-from gausskit.degrees_of_freedom import DOF
+# Import DOF from the leaf submodule, not the package, so this module does not
+# re-enter a partially-initialized gausskit.degrees_of_freedom during package init
+# (the package __init__ eagerly imports Harmonic).
+from gausskit.degrees_of_freedom.degrees_of_freedom import DOF
 
 if TYPE_CHECKING:
     from gausskit.molecules import Molecules
