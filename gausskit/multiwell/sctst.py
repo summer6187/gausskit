@@ -1,6 +1,5 @@
 """a wrapper for Parsctst"""
 from pathlib import Path
-import os
 import re
 import subprocess
 import collections
@@ -400,14 +399,16 @@ def _fix_paradensum_qvib(filename):
     lines = Path(filename).read_text().splitlines()
     egr = re.compile(r"^\s*[\d.]+\s+[\d.]+\s+[\d.]+\s*$")
     nsum = 0
+    done = False
     out = []
     for ln in lines:
         if "INPUT DATA SUMMARY" in ln:
             nsum += 1
-        if nsum >= 2 and egr.match(ln):                 # the energy-grid line after the 2nd summary
+        if nsum >= 2 and not done and egr.match(ln):    # only the first energy-grid line after the 2nd summary
             if out and out[-1].strip() == "":
                 out.pop()
             out.append(ln.rstrip() + "   BEST  ")
+            done = True
         else:
             out.append(ln)
     Path(filename).write_text("\n".join(out) + "\n")

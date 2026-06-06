@@ -186,7 +186,9 @@ class Molecules(Atoms):
         # default to 1 optical isomer rather than crash the whole parse.
         try:
             self._optical_isomers = rdkit.get_optical_isomers(self)
-        except Exception:
+        except Exception as err:
+            print(f"!!! optical-isomer perception failed for {self.get_chemical_formula()}; "
+                  f"defaulting to 1 ({type(err).__name__}: {err})")
             self._optical_isomers = 1
 
     @property
