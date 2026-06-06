@@ -181,7 +181,13 @@ class Molecules(Atoms):
         return self._optical_isomers
 
     def set_optical_isomers(self):
-        self._optical_isomers = rdkit.get_optical_isomers(self)
+        # RDKit bond perception (DetermineBonds) fails for ionic / metal-containing
+        # species (e.g. Na, NaCl) with IndexError; such species are not chiral, so
+        # default to 1 optical isomer rather than crash the whole parse.
+        try:
+            self._optical_isomers = rdkit.get_optical_isomers(self)
+        except Exception:
+            self._optical_isomers = 1
 
     @property
     def electronic_partition_function(self) -> float:
