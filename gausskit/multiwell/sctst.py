@@ -1,6 +1,6 @@
 """a wrapper for Parsctst"""
 from pathlib import Path
-import os
+import re
 import subprocess
 import collections
 
@@ -16,6 +16,7 @@ config = Configuration()
 module_dict = {
     "p": "[Parsctst]",
     "d": "[Bdens]",
+    "pd": "[Paradensum]",
 }
 module = collections.namedtuple("module", module_dict.keys())(**module_dict)
 
@@ -46,8 +47,15 @@ def write_parsctst(
         None
     """
 
-    harm_freq = mol.frequencies
-    anharm_matrix = mol.anharm_matrix
+    harm_freq = np.asarray(mol.frequencies, dtype=float)
+    anharm_matrix = np.asarray(mol.anharm_matrix, dtype=float)
+    # mol.frequencies (parsed from Gaussian's "Fundamental Bands") and mol.anharm_X_matrix
+    # (the "Total Anharmonic X Matrix") are BOTH in Gaussian's Fundamental-Bands mode order
+    # (real frequencies descending, the imaginary/reaction-coordinate mode last), so they are
+    # already aligned index-by-index: harm_freq[i] <-> anharm_matrix[i, i]. DO NOT reorder.
+    # (Gaussian's other frequency listing -- the harmonic "Frequencies --" lines -- is the
+    # opposite order, ascending with the imaginary mode first, and must not be used to index
+    # the X-matrix. An earlier argsort-based reorder did exactly that and scrambled every mode.)
 
     img_freq = 0
     img_index = None
@@ -127,7 +135,7 @@ def write_parsctst(
     lines += [f"{item:.5E}" for item in img_anharm_array]
     lines.append(" ")
     pardata = [
-        "1       !nwalkers",
+        "4       !nwalkers",                       # >=4 walkers/window for reliable Wang-Landau convergence
         "70.d0   !perc_wind_overlap",
         "0.60d0  !flatness",
         "1       !Writing enable (1) or disable (2)",
@@ -166,8 +174,10 @@ def write_bdens(
         None
     """
 
-    harm_freq = mol.frequencies
-    anharm_matrix = mol.anharm_matrix
+    harm_freq = np.asarray(mol.frequencies, dtype=float)
+    anharm_matrix = np.asarray(mol.anharm_matrix, dtype=float)
+    # frequencies and anharm_X_matrix are both in Gaussian Fundamental-Bands order and already
+    # aligned index-by-index; do NOT reorder (see the note in write_parsctst).
 
     lines = []
     lines.append(fname)
@@ -189,6 +199,69 @@ def write_bdens(
     # write file
     if verbose:
         print(f"{module.p:11} Writing to {datfile}")
+    with open(datfile, "w") as f:
+        f.writelines([line + "\n" for line in lines])
+
+    return lines
+
+
+def write_paradensum(
+    mol:Molecules,
+    fname:str = "",
+    Egrain="10   3000   4000   50000",
+    datfile:Path = Path("paradensum.dat"),
+    verbose:bool = False,
+):
+    """Write the ``paradensum`` (parallel anharmonic DOS) input file.
+
+    Same anharmonic data as :func:`write_bdens`, but in paradensum's deck layout: a clean
+    four-field energy-grid line (no serial-bdens trial keyword) followed by the parallel
+    Wang-Landau control block. paradensum reads a mandatory blank line after the checkpoint
+    line, so one is emitted before the control block.
+
+    Args:
+        mol (Molecules): Molecule for which densities are computed.
+        fname (str, optional): Base filename prefix.
+        Egrain (str, optional): Energy grid spec ``Egrain1 imax1 Isize Emax2``.
+        datfile (Path, optional): Output file path. Defaults to ``paradensum.dat``.
+        verbose (bool, optional): Print progress information. Defaults to ``False``.
+
+    Returns:
+        list: The written deck lines.
+    """
+
+    harm_freq = np.asarray(mol.frequencies, dtype=float)
+    anharm_matrix = np.asarray(mol.anharm_matrix, dtype=float)
+    # frequencies and anharm_X_matrix are both in Gaussian Fundamental-Bands order and already
+    # aligned index-by-index; do NOT reorder (see the note in write_parsctst).
+
+    lines = []
+    lines.append(fname)
+    lines.append(f"At {mol.method} ?? level of theory")
+    lines.append(f"Anharmonicity from {mol.method} level")
+    lines.append(" ")
+    lines.append(f'{len(harm_freq)}, {0}, {0}, "We" ')
+    lines.append(" ")
+    lines += format_freq_matrix(harm_freq, anharm_matrix)
+    lines.append(" ")
+    lines.append("0    'AMUA'")
+    lines.append(" ")
+    lines.append(f"{Egrain}")                      # four fields only; no serial-bdens trial keyword
+    lines.append(f"'nochekstart'  {fname}.chk")
+    lines.append(" ")                              # mandatory blank line read by paradensum
+    lines += [
+        "4\t!nwalkers",                            # 1 walker/window under-converges the WL DOS; >=4 converges
+        "70.d0\t!perc_wind_overlap",
+        "0.95d0\t!flatness",
+        "1\t!writing",
+        "0\t!seed modifier",
+        "const\t!Windows balance",
+    ]
+    lines.append(" ")
+
+    # write file
+    if verbose:
+        print(f"{module.pd:11} Writing to {datfile}")
     with open(datfile, "w") as f:
         f.writelines([line + "\n" for line in lines])
 
@@ -219,6 +292,14 @@ def run_parsctst(
         if verbose:
             print(f"{module.p:11} Copy {datfile} to {default_datfile}")
         default_datfile.write_text(datfile.read_text())
+
+    # parsctst reuses fixed scratch filenames (Rank<N>.txt, Windows_info.txt); clear any stale
+    # copies (e.g. left by paradensum on the wells earlier in the same run) before launching.
+    for stale in list(cwd.glob("Rank*.txt")) + [cwd / "Windows_info.txt"]:
+        try:
+            stale.unlink()
+        except FileNotFoundError:
+            pass
 
     command = f"cd {cwd}; " + config.machine.parsctst_command
     if verbose:
@@ -255,30 +336,114 @@ def run_bdens(
         print(f"{module.d:11} Run command: {command}")
     subprocess.call(command, shell=True)
 
-def fix_crp_file(filename, add_text="    GOOD   VPT4A"):
-    """Insert text into a CRP file after the summary line.
+def run_paradensum(
+    datfile:Path = Path("paradensum.dat"),
+    verbose:bool = False,
+):
+    """Execute the parallel ``paradensum`` program (Intel MPI under oneAPI).
+
+    The ``paradensum_command`` in ``~/.gausskitrc`` is expected to launch it under an MPI
+    runner, e.g. ``mpirun -n 4 /path/to/paradensum`` (oneAPI must be on the environment).
 
     Args:
-        filename (Path | str): File to modify.
-        add_text (str, optional): Text appended to the line following
-            ``INPUT DATA SUMMARY``. Defaults to ``"    GOOD   VPT4A"``.
+        datfile (Path): Input control file.
+        verbose (bool, optional): Print the command being run. Defaults to ``False``.
 
     Returns:
         None
     """
-    with open(filename) as f:
-        lines = f.readlines()
-    for n, line in enumerate(lines[1:]):
-        if "INPUT DATA SUMMARY" in line:
-            n_edit = n + 4
-            # edit a line like this
-            #      10.00   50000.00    8882.35    9053.73    2976.93
-            break
-    new_line = lines[n_edit][:-1] + add_text + os.linesep
-    lines[n_edit] = new_line
 
-    with open(filename, "w") as f:
-        for line in lines:
-            f.write(line)
-        f.write(f"  {os.linesep}")
+    cwd = datfile.parent.absolute()
+
+    _default_datfile = "paradensum.dat"
+
+    if datfile.name != _default_datfile:
+        default_datfile = cwd / _default_datfile
+        if verbose:
+            print(f"{module.pd:11} Copy {datfile} to {default_datfile}")
+        default_datfile.write_text(datfile.read_text())
+
+    # paradensum reuses fixed scratch filenames (Rank<N>.txt, Windows_info.txt); stale copies
+    # left by a previous parsctst/paradensum run in the same directory get read as garbage
+    # (list-directed I/O syntax error), so clear them before launching.
+    for stale in list(cwd.glob("Rank*.txt")) + [cwd / "Windows_info.txt"]:
+        try:
+            stale.unlink()
+        except FileNotFoundError:
+            pass
+
+    command = f"cd {cwd}; " + config.machine.paradensum_command
+    if verbose:
+        print(f"{module.pd:11} Run command: {command}")
+    subprocess.call(command, shell=True)
+
+    # paradensum's .qvib omits the KEYWORD2 field (and inserts a stray blank line) on the
+    # energy-grid line that THERMO's reader requires (read_dat.f reads 4 fields there); patch
+    # it to the bdens-compatible layout so THERMO can read it (otherwise its reads shift by one
+    # and the "number of temperatures" read fails with a list-directed I/O syntax error).
+    try:
+        fname = Path(datfile).read_text().splitlines()[0].strip()
+        qvib = cwd / f"{fname}.qvib"
+        if qvib.exists():
+            _fix_paradensum_qvib(qvib)
+    except (OSError, IndexError):
+        pass
+
+def _fix_paradensum_qvib(filename):
+    """Patch a paradensum ``.qvib`` to the layout THERMO expects.
+
+    paradensum writes the energy-grid line as ``Egrain1 Emax2 zpp`` preceded by a blank line,
+    but THERMO reads ``Egrain1 Emax2 zpp KEYWORD2`` from that line (and no blank before it).
+    Drop the stray blank line and append the missing KEYWORD2 field.
+    """
+    lines = Path(filename).read_text().splitlines()
+    egr = re.compile(r"^\s*[\d.]+\s+[\d.]+\s+[\d.]+\s*$")
+    nsum = 0
+    done = False
+    out = []
+    for ln in lines:
+        if "INPUT DATA SUMMARY" in ln:
+            nsum += 1
+        if nsum >= 2 and not done and egr.match(ln):    # only the first energy-grid line after the 2nd summary
+            if out and out[-1].strip() == "":
+                out.pop()
+            out.append(ln.rstrip() + "   BEST  ")
+            done = True
+        else:
+            out.append(ln)
+    Path(filename).write_text("\n".join(out) + "\n")
+
+
+def fix_crp_file(filename, add_text="GOOD   VPT4A"):
+    """Patch a parsctst ``.crp``/``.qcrp`` so THERMO can read it.
+
+    THERMO reads ``Egrain1 Emax2 Vf Vr zpp KEYWORD2 VPTx`` from the energy-grid line of the
+    qcrp (read_dat.f). The oneAPI (ifx) build of parsctst writes that line without the trailing
+    ``KEYWORD2 VPTx`` fields and prepends a stray blank line, so the old fixed ``n+4`` offset
+    landed on the blank line. Locate the grid line by pattern (the first all-numeric line after
+    the 2nd ``INPUT DATA SUMMARY``), drop a preceding blank line, and append the missing fields.
+
+    Args:
+        filename (Path | str): File to modify.
+        add_text (str, optional): Trailing fields to append. Defaults to ``"GOOD   VPT4A"``.
+
+    Returns:
+        None
+    """
+    lines = Path(filename).read_text().splitlines()
+    egr = re.compile(r"^\s*[\d.]+(?:\s+[\d.]+){3,}\s*$")   # >=4 numeric fields, no trailing keyword
+    nsum = 0
+    done = False
+    out = []
+    for ln in lines:
+        if "INPUT DATA SUMMARY" in ln:
+            nsum += 1
+        if nsum >= 2 and not done and egr.match(ln):
+            if out and out[-1].strip() == "":
+                out.pop()
+            out.append(ln.rstrip() + "  " + add_text)
+            done = True
+        else:
+            out.append(ln)
+    Path(filename).write_text("\n".join(out) + "\n")
     return
