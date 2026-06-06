@@ -1,9 +1,10 @@
-# harmonic and anharmonic vibrational degrees of freedom
+# harmonic vibrational degrees of freedom (Harmonic); VPT2 anharmonicity lives in vpt2.py
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from pathlib import Path
 import numpy as np
 
+from ase import Atoms
 from ase.units import Bohr, Hartree
 from gausskit.degrees_of_freedom import DOF
 
@@ -126,6 +127,54 @@ class Harmonic(DOF):
     def from_gaussian_fc(self, filename):
         fc = parse_gaussian_fc(filename)
         self.force_constants = fc
+
+    # ---- normal-mode basis ----------------------------------------------------
+    def mass_weighted_modes(self):
+        """(nmode, 3N) mass-weighted orthonormal modes from the eigh solve
+        (translation/rotation already removed)."""
+        ev = np.asarray(self.eigenvectors)              # (natoms, 3, nmode)
+        return ev.reshape(ev.shape[0] * 3, -1).T        # (nmode, 3N)
+
+    def _modes(self, modes):
+        """Resolve the mode matrix to use (subclasses may override the default).
+
+        Normal coordinate Q is in A*amu^(1/2) (kinetic energy = 1/2 Qdot^2); a
+        geometry displaced along mode i by Q is  x(Q) = x0 + (L_i / sqrt(m)) * Q,
+        where L (nmode, 3N) is a mass-weighted, orthonormal normal-mode matrix.
+        """
+        return self.mass_weighted_modes() if modes is None else np.asarray(modes)
+
+    # ---- structure generation -------------------------------------------------
+    def displace_along_mode(self, i, Q, modes=None):
+        """ase.Atoms displaced along mode i by normal coordinate Q (A*amu^1/2)."""
+        L = self._modes(modes)
+        m_w = np.repeat(self.masses, 3) ** 0.5
+        dx = (L[i] / m_w) * Q
+        return Atoms(numbers=np.asarray(self.molecules.numbers),
+                     positions=self.positions0 + dx.reshape(-1, 3))
+
+    def scan_mode(self, i, Q_array, modes=None):
+        """List of ase.Atoms along a 1D scan of mode i."""
+        return [self.displace_along_mode(i, Q, modes) for Q in np.asarray(Q_array)]
+
+    def project_onto_modes(self, atoms, modes=None):
+        """Normal coordinates Q (A*amu^1/2) of a geometry: Q_i = sum_A sqrt(m) dR_A L_iA."""
+        L = self._modes(modes)
+        m_w = np.repeat(self.masses, 3) ** 0.5
+        d = (np.asarray(atoms.get_positions()) - self.positions0).reshape(-1)
+        return (d * m_w) @ L.T
+
+    # ---- TS-safe vibrational set (fixes the naive [6:] trans/rot slice) --------
+    def vibrational_modes_abs(self):
+        """(w2, modes) keeping 3N-6 vibrational modes by smallest |w2| (so a TS
+        imaginary mode with large negative w2 is RETAINED, not dropped). Returns
+        w2 (eV/(amu A^2)) and modes (nmode, 3N), sorted by descending w2."""
+        D = np.asarray(self.dynamical_matrix)
+        w2, X = np.linalg.eigh(D)
+        keep = np.argsort(np.abs(w2))[6:]               # drop the 6 smallest-|w2| (trans/rot)
+        w2, X = w2[keep], X[:, keep]
+        order = np.argsort(w2)[::-1]
+        return w2[order], X[:, order].T
 
 def parse_gaussian_fc(filename) -> np.ndarray | None:
     filename = Path(filename)
