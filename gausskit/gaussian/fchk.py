@@ -10,11 +10,15 @@ Scalars have the value on the header line; arrays declare "N= count" and list th
 values (5 per line for reals, 6 for ints) on subsequent lines.
 
 This reader is intentionally minimal: a generic block reader plus typed accessors
-for the blocks we use. Values are returned RAW (atomic units, as stored by
-Gaussian); unit conversions are the caller's responsibility (see VPT2).
+for the blocks we use. The FCHK class returns values RAW (atomic units, as stored
+by Gaussian); unit conversions are the caller's responsibility (see VPT2). The
+module also exposes one converting convenience, parse_gaussian_fc, which returns
+the force-constant matrix in eV/Angstrom^2.
 """
 from __future__ import annotations
+from pathlib import Path
 import numpy as np
+from ase.units import Bohr, Hartree
 
 _TYPES = {"I": int, "R": float, "C": str, "L": int}
 
@@ -124,6 +128,20 @@ class FCHK:
     def quartic(self):
         """d^4 V / dQ_i^2 dx_A dx_B  (n_modes, 3N, 3N), semi-diagonal, raw a.u."""
         return self._force_derivatives()[1]
+
+
+def parse_gaussian_fc(filename) -> np.ndarray | None:
+    """Cartesian force constants (3N, 3N) in eV/Angstrom^2 from a Gaussian .fchk.
+
+    Convenience converter (unlike the raw `FCHK.hessian`): reads the lower-triangular
+    'Cartesian Force Constants' block and converts Hartree/Bohr^2 -> eV/Angstrom^2.
+    Returns None for unsupported file types.
+    """
+    filename = Path(filename)
+    if filename.suffix == ".fchk":
+        return FCHK(filename).hessian * (Hartree / Bohr / Bohr)
+    print(f"Force constants from {filename} not implemented.")
+    return None
 
 
 if __name__ == "__main__":
