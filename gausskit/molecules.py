@@ -16,7 +16,7 @@ from gausskit.gaussian.anharm import (
     read_harm_freq_another,
 )
 from gausskit.gaussian.hindrot import Hinderedrotor, read_hindrot
-from gausskit.degrees_of_freedom.vibration import Harmonic
+from gausskit.degrees_of_freedom.harmonic import Harmonic
 from gausskit.symmetry import external_symmetry_number
 import gausskit.rdkit as rdkit
 
