@@ -12,7 +12,7 @@ import atexit
 import tempfile
 import numpy as np
 from ase.units import Bohr, Hartree
-from gausskit.gaussian.fchk import FCHK as FCHKReader
+from gausskit.gaussian.fchk import FCHK as FCHKReader, parse_gaussian_fc
 from gausskit.molecules import Molecules
 from gausskit.degrees_of_freedom.harmonic import Harmonic
 from gausskit.degrees_of_freedom.vpt2 import VPT2
@@ -172,6 +172,17 @@ def test_harmonic_only_fchk():
     assert vh.cubic is None and vh.quartic is None
     assert float(vh.frequency(0)) < 0               # harmonic frequencies still work
     assert len(vh.masses) == vh.fchk.n_atoms
+
+
+def test_parse_gaussian_fc_converts_to_ev_per_ang2():
+    # The consolidated converter returns the force-constant matrix in eV/Angstrom^2
+    # (Hartree/Bohr^2 scaled), bit-identical to FCHK.hessian scaled; unsupported
+    # file types return None.
+    fc = parse_gaussian_fc(FCHK)
+    expected = FCHKReader(FCHK).hessian * (Hartree / Bohr / Bohr)
+    assert fc.shape == (3 * 6, 3 * 6)
+    assert np.allclose(fc, expected, atol=0, rtol=0)
+    assert parse_gaussian_fc("not_a_real_file.log") is None
 
 
 def test_lazy_vpt2_package_export():

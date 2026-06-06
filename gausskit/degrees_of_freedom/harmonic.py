@@ -1,11 +1,11 @@
 # harmonic vibrational degrees of freedom (Harmonic); VPT2 anharmonicity lives in vpt2.py
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from pathlib import Path
 import numpy as np
 
 from ase import Atoms
-from ase.units import Bohr, Hartree
+from ase.units import Hartree
+from gausskit.gaussian.fchk import parse_gaussian_fc
 # Import DOF from the leaf submodule, not the package, so this module does not
 # re-enter a partially-initialized gausskit.degrees_of_freedom during package init
 # (the package __init__ eagerly imports Harmonic).
@@ -128,8 +128,7 @@ class Harmonic(DOF):
         return results
 
     def from_gaussian_fc(self, filename):
-        fc = parse_gaussian_fc(filename)
-        self.force_constants = fc
+        self.force_constants = parse_gaussian_fc(filename)
 
     # ---- normal-mode basis ----------------------------------------------------
     def mass_weighted_modes(self):
@@ -178,68 +177,3 @@ class Harmonic(DOF):
         w2, X = w2[keep], X[:, keep]
         order = np.argsort(w2)[::-1]
         return w2[order], X[:, order].T
-
-def parse_gaussian_fc(filename) -> np.ndarray | None:
-    filename = Path(filename)
-    if filename.suffix == ".fchk":
-        fc = read_force_constants_fchk(filename)
-    else:
-        print(f"Force constants from {filename} not implemented.")
-        fc = None
-    return fc
-
-def read_force_constants_fchk(filename, verbose=False):
-    with open(filename) as f:
-        lines = f.readlines()
-
-    read = False
-    for n,line in enumerate(lines):
-        if read and line.split()[0][0].isalpha():
-            # read only the numbers. 
-            # If we meet letters str.isalpha(), then we stop read.
-            l_end = n-1
-            break
-        if line.startswith("Cartesian Force Constants"):
-            l_start = n+1
-            read = True
-
-    fc_array = " ".join(lines[l_start:l_end+1]).split()
-    fc_array = np.array([float(_f) for _f in fc_array])
-
-    # Force constants in Gaussian is stored in a lower triangle matrix.
-    # Full force constants matrix is in 3*n * 3*n.
-    # The lower triangle matrix has (3*n*3*n + 3*n)/2 elements.
-    # For a given array lengh, for example 171, we can calculate
-    # the number of atoms in the system by solving (3*n*3*n + 3*n)/2 = 171.
-    # We need to solve the equation: 4.5 * n^2 + 1.5 * n - 171 = 0
-    # The root is given by (-b +/- sqrt(b^2 - 4ac)) / 2a
-    n_array = fc_array.shape[0]
-    _n_atoms = (-1.5 + np.sqrt(1.5**2 + 4*4.5*n_array)) / 9
-    n_atoms = int(_n_atoms)
-    assert np.allclose(n_atoms, _n_atoms) # make sure n_atoms is int
-
-    # restore the array into lower triangle matrix
-    fc = np.zeros((3*n_atoms , 3*n_atoms))
-    for i in range(3*n_atoms):
-        # i th row will begin from index 1+2+...+i in fc_array
-        # This row will have (i+1) elements
-        _fc_array_index_1 = (1 + i) * i / 2
-        fc_array_index_1 = int(_fc_array_index_1)
-        assert np.allclose(fc_array_index_1, _fc_array_index_1)
-        fc[i,:][0:i+1] = fc_array[fc_array_index_1:fc_array_index_1 + i + 1]
-        if verbose:
-            # for debug or understand the details
-            print(f"{i} {fc_array_index_1 = } {fc_array_index_1 + i + 1 = }")
-            print(f"{fc_array[fc_array_index_1:fc_array_index_1 + i + 1] = }")
-
-    # recover the full fc matrix
-    for i in range(3*n_atoms):
-        fc[i,:] = fc[:,i]
-    if verbose:
-        print(f"{fc = }")
-
-    # Gaussian FC unit is Hartree / Bohr / Bohr
-    # Convert to eV / angstrom / angstrom
-    fc *= Hartree / Bohr / Bohr
-
-    return fc
