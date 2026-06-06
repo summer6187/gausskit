@@ -5,6 +5,7 @@
  gauss2multi_command = gauss2multi
  parsctst_command = parsctst
  bdens_command = bdens
+ paradensum_command = mpirun -n 4 paradensum
  thermo_command = thermo
  mominert_command = mominert
  densum_command = densum

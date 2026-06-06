@@ -5,6 +5,7 @@ from gausskit.multiwell.mominert import (
 )
 from gausskit.multiwell.sctst import (
     write_parsctst, write_bdens, run_parsctst, run_bdens, fix_crp_file,
+    write_paradensum, run_paradensum,
 )
 from gausskit.multiwell.densum import write_densum, run_densum
 from gausskit.multiwell.ktools import write_ktools, run_ktools
@@ -153,11 +154,11 @@ def run_PES_densdata(
                     fix_crp_file(densdata_path / f"{dummy_name}.qcrp")
 
             else:
-                # bdens
-                datfile = densdata_path / f"{dummy_name}.bdens.dat"
-                write_bdens(mol, dummy_name, Egrain, datfile, verbose)
+                # paradensum: parallel anharmonic density of states (replaces serial bdens)
+                datfile = densdata_path / f"{dummy_name}.paradensum.dat"
+                write_paradensum(mol, dummy_name, Egrain, datfile, verbose)
                 if not dry:
-                    run_bdens(datfile, verbose)
+                    run_paradensum(datfile, verbose)
 
     # 3.1 internal hindered rotor
     # prepare hindered rot calculations
