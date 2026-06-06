@@ -113,8 +113,9 @@ class Harmonic(DOF):
     def calculate(self, atoms):
         assert np.allclose(atoms.numbers, self.molecules.numbers), "New structure not match the order with FC!"
         d = (atoms.get_positions() - self.positions0).flatten()
-        energy = self.E0 + self.force_constants @ d @ d
-        forces = self.force_constants @ d
+        # Harmonic energy is (1/2) d^T F d ; the 1/2 must not be dropped.
+        energy = self.E0 + 0.5 * (self.force_constants @ d @ d)
+        forces = -self.force_constants @ d  # force = -grad(E) = -F d
         results = {
             "energy": energy,
             "forces": forces,
