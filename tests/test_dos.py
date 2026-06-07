@@ -10,7 +10,7 @@ import tempfile
 import numpy as np
 from gausskit.multiwell.dos import (
     sinc_dvr, stein_rabinovitch, write_dens, q_levels, q_harmonic,
-    CM_PER_EV, C_KIN_EV,
+    scan_to_hrd, hrd_block, CM_PER_EV, C_KIN_EV,
 )
 
 
@@ -87,6 +87,26 @@ def test_q_levels_matches_harmonic():
     levels = w * np.arange(0, 400)
     for T in (300, 700, 1500):
         assert abs(q_levels(levels, T) - q_harmonic(w, T)) < 1e-6
+
+
+def test_scan_to_hrd_reproduces_dvr():
+    # a realistic stiffening soft-mode well (~1 eV at the +-11 edges, like the Na+CFxCly
+    # scans); the scan-matched HRD must reproduce the direct DVR partition function.
+    w, a4 = 30.0, 8.0e-4
+    a2 = (w / CM_PER_EV) ** 2 / (2 * C_KIN_EV)
+    Q = np.linspace(-11, 11, 41)
+    V = (0.5 * a2 * Q**2 + a4 / 24 * Q**4) * CM_PER_EV          # cm^-1
+    Edvr = sinc_dvr(Q, V, emax=12000)
+    hrd = scan_to_hrd(Q, V, n_fourier=16)
+    for T in (500, 800, 1200):
+        r = q_levels(hrd["levels"], T) / q_levels(Edvr, T)
+        assert abs(r - 1.0) < 0.01, (T, r)
+    # block format: hrd line + Vhrd2 + Bhrd1
+    block = hrd_block(10, hrd).splitlines()
+    assert block[0].split()[1] == "hrd"
+    assert block[1].strip().startswith("Vhrd2")
+    assert block[2].strip().startswith("Bhrd1")
+    assert abs(float(block[2].split()[-1]) - hrd["B"]) < 1e-4
 
 
 if __name__ == "__main__":

@@ -155,3 +155,61 @@ def q_rotor(B, T, dim=1, sigma=1.0):
     if dim == 2:
         return float(x / sigma)
     raise ValueError("dim must be 1 or 2")
+
+
+# ---- scan -> MultiWell general hindered rotor (HRD) ---------------------------
+def scan_to_hrd(Q, V_cm, n_fourier=16, nsym=1):
+    """Represent a scanned 1D mode (Q in A*amu^1/2, V_cm in cm^-1 referenced to the
+    minimum) as a MultiWell general hindered rotor (HRD) that reproduces the mode's
+    quantum levels. The mass-weighted coordinate Q is mapped onto a torsional angle
+    phi in [0, 2*pi) over the scan range L; the kinetic term -C_KIN d2/dQ2 becomes
+    -B d2/dphi2 with B = C_KIN*(2*pi/L)^2 (so the rotor's reduced moment is a kinetic
+    bookkeeping device, not a physical inertia), and V(phi) is a cosine Fourier series
+    (the MultiWell 'Vhrd2' model: V = CV[0] + sum_i CV[i] cos(i*nsym*phi)).
+
+    Returns dict: B (cm^-1), I_red (amu*A^2 = 16.857629/B), CV (cosine coefficients),
+    nsym, and the bound levels (cm^-1) the HRD yields (for validation).
+    """
+    Q = np.asarray(Q, float)
+    V_cm = np.asarray(V_cm, float)
+    L = Q.max() - Q.min()
+    phi = 2 * np.pi * (Q - Q.min()) / L
+    B = C_KIN_EV * (2 * np.pi / L) ** 2 * CM_PER_EV
+    A = np.column_stack([np.cos(n * nsym * phi) for n in range(n_fourier)])
+    CV, *_ = np.linalg.lstsq(A, V_cm - V_cm.min(), rcond=None)
+    levels = _hrd_levels(B, CV, nsym)
+    return {"B": float(B), "I_red": float(16.857629 / B), "CV": CV,
+            "nsym": int(nsym), "levels": levels}
+
+
+def _hrd_levels(B, CV, nsym=1, mmax=120, emax=20000.0):
+    """Eigenvalues (cm^-1, ground-referenced) of -B d2/dphi2 + sum CV[n]cos(n*nsym*phi)
+    in the plane-wave basis (exact for a cosine potential)."""
+    CV = np.asarray(CV, float)
+    m = np.arange(-mmax, mmax + 1)
+    n = len(m)
+    H = np.diag(B * m.astype(float) ** 2)
+    for k in range(1, len(CV)):
+        for i in range(n):
+            j = i + k * nsym
+            if 0 <= j < n:
+                H[i, j] += CV[k] / 2.0
+                H[j, i] += CV[k] / 2.0
+    E = np.linalg.eigvalsh(H)
+    E = np.sort(E - E.min())
+    return E[E < emax]
+
+
+def hrd_block(mode_no, hrd, comment="scan-matched hindered rotor"):
+    """MultiWell DENSUM/THERMO input lines for a general hindered rotor (HRD) from a
+    `scan_to_hrd` result `hrd`. Format:
+        <mode>  hrd  <NSV>.  1.  <nsym>   ! comment
+          Vhrd2  <nsym>  0.  <CV...>
+          Bhrd1  1  0.  <B>
+    """
+    CV = np.asarray(hrd["CV"], float)
+    nsv = len(CV)
+    vcoef = "  ".join(f"{c:.5f}" for c in CV)
+    return (f"{mode_no:<6} hrd   {nsv}.   1.   {hrd['nsym']}   ! {comment}\n"
+            f"  Vhrd2   {hrd['nsym']}   0.   {vcoef}\n"
+            f"  Bhrd1   1   0.   {hrd['B']:.6f}")
