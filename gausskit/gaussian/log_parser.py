@@ -1,8 +1,66 @@
 import re
 import argparse
+import numpy as np
 
+# Gaussian mass-weights its normal modes with the MOST-ABUNDANT-ISOTOPE mass by default
+# (e.g. Cl = 34.96885), NOT the IUPAC isotope-averaged weight in ase.data.atomic_masses
+# (Cl = 35.45). Use the common-isotope table so the fallback matches Gaussian's convention.
+from ase.data import atomic_masses_common
 from ase.io.gaussian import read_gaussian_out
 from ase.units import Hartree
+
+
+def read_normal_modes(filename):
+    """Parse the converged geometry, harmonic frequencies, and Cartesian normal modes from
+    a Gaussian freq LOG (the standard 2-decimal 'Atom AN' displacement blocks).
+
+    Returns ``(numbers, positions, masses, freqs, cart_modes)``:
+      numbers    atomic numbers (natoms,)
+      positions  Cartesian coordinates in Angstrom (natoms, 3), in the same frame as the modes
+                 (Standard orientation if Gaussian reoriented, else Input orientation under nosymm)
+      masses     atomic masses in amu (natoms,)
+      freqs      harmonic frequencies in cm^-1 (nmodes,), imaginary negative, Gaussian order
+      cart_modes list of (natoms, 3) Cartesian displacement arrays, one per mode (same order)
+    """
+    lines = open(filename).read().splitlines()
+    # Locate the harmonic frequency analysis first (the standard 2-decimal 'Atom AN' blocks).
+    freq_idx = [i for i, l in enumerate(lines) if "Frequencies --" in l]
+    if not freq_idx:
+        raise ValueError(f"{filename}: no 'Frequencies --' block found (not a freq job?)")
+    fstart = freq_idx[0]
+    # Geometry in the SAME frame as the modes: the last orientation block BEFORE the freq table
+    # (Standard if reoriented, Input under nosymm). Decoupling this from the freq search keeps
+    # multi-step jobs (opt+freq / composite G4) that print a later geometry from breaking it.
+    geo = ([i for i, l in enumerate(lines) if "Standard orientation" in l and i < fstart]
+           or [i for i, l in enumerate(lines) if "Input orientation" in l and i < fstart]
+           or [i for i, l in enumerate(lines) if "Standard orientation" in l]
+           or [i for i, l in enumerate(lines) if "Input orientation" in l])
+    if not geo:
+        raise ValueError(f"{filename}: no 'Standard/Input orientation' geometry block found")
+    gi = max(geo)
+    j, numbers, pos = gi + 5, [], []
+    while "---" not in lines[j]:
+        t = lines[j].split()
+        numbers.append(int(t[1])); pos.append([float(t[3]), float(t[4]), float(t[5])]); j += 1
+    numbers, pos, nat = np.array(numbers), np.array(pos), len(numbers)
+    mass = []
+    for l in lines:
+        if "has atomic number" in l and "mass" in l:
+            mass.append(float(l.split("mass")[1]))
+            if len(mass) == nat:
+                break
+    mass = np.array(mass) if len(mass) == nat else atomic_masses_common[numbers]
+    freqs, cart_modes, i = [], [], fstart
+    while i < len(lines) and "Frequencies --" in lines[i]:
+        freqs += [float(x) for x in lines[i].split("--")[1].split()]
+        a = next(k for k in range(i, i + 8) if lines[k].lstrip().startswith("Atom  AN"))
+        block = np.array([[float(x) for x in lines[a + 1 + r].split()[2:]] for r in range(nat)])
+        for c in range(block.shape[1] // 3):
+            cart_modes.append(block[:, 3 * c:3 * c + 3])
+        i = a + 1 + nat
+        while i < len(lines) and "Frequencies --" not in lines[i] and "-------" not in lines[i]:
+            i += 1
+    return numbers, pos, mass, np.array(freqs), cart_modes
 
 
 def check_normal_termination(lines):
