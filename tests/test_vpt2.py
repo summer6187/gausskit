@@ -119,6 +119,30 @@ def test_taylor_pes_self_consistency():
         assert np.allclose(E_1d, E_full, atol=1e-9)
 
 
+def test_calculate_energy_and_forces():
+    # calculate() is the higher-order analogue of Harmonic.calculate: its energy minus
+    # E0 is the Taylor PES, it is zero (with zero force) at the reference geometry, and
+    # its analytic forces match a central finite difference of its own energy.
+    v = _v()
+    v.molecules.electronic_energy = 0.0                    # fixture has no energy; fix E0 = 0
+    at0 = v.displace_along_mode(2, 0.0)                     # reference geometry
+    r0 = v.calculate(at0)
+    assert abs(r0["energy"] - v.E0) < 1e-9
+    assert np.abs(r0["forces"]).max() < 1e-9
+    at = v.displace_along_mode(1, 1.7)                      # displaced along a soft mode
+    r = v.calculate(at)
+    assert abs((r["energy"] - v.E0) - v.taylor_energy(at, 4)) < 1e-9
+    x = at.get_positions().reshape(-1).copy()
+    h, g_fd = 1e-5, np.zeros_like(x)
+    for k in range(len(x)):
+        xp = x.copy(); xp[k] += h
+        xm = x.copy(); xm[k] -= h
+        ep = v.calculate(at.__class__(numbers=v.molecules.numbers, positions=xp.reshape(-1, 3)))["energy"]
+        em = v.calculate(at.__class__(numbers=v.molecules.numbers, positions=xm.reshape(-1, 3)))["energy"]
+        g_fd[k] = (ep - em) / (2 * h)
+    assert np.abs(-r["forces"] - g_fd).max() < 1e-5
+
+
 def test_unreliable_fc_recorded():
     # Gaussian flags exactly the grid-sensitive soft / reaction-coordinate constants;
     # recorded in the reference so the test documents the irreducible artifacts.

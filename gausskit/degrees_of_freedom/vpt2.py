@@ -168,6 +168,47 @@ class VPT2(Harmonic):
         if order >= 4: E += a4/24*Q**4
         return E
 
+    # ---- ASE-style evaluator (higher-order analogue of Harmonic.calculate) -----
+    def _taylor_gradient(self, d, order=4):
+        """Gradient dV/dx (eV/A, flat length 3N) of the Taylor PES that taylor_energy
+        evaluates, for a Cartesian displacement d = x - x0 (flat 3N, A)."""
+        mw = np.repeat(self.masses, 3) ** 0.5
+        L = self.gaussian_modes                                   # (m, 3N)
+        Q = (d * mw) @ L.T                                        # normal coords, dQ_i/dd_a = mw_a L_ia
+        g = mw * (L.T @ (self.w2_gaussian * Q))                   # harmonic part
+        if order >= 3:
+            C = np.einsum("iab,a,b->i", self.cubic, d, d)        # sum_ab cubic_iab d_a d_b
+            dC = np.einsum("iab,b->ia", self.cubic, d) + np.einsum("iab,a->ib", self.cubic, d)
+            g = g + (mw * (L.T @ C) + np.einsum("i,ia->a", Q, dC)) / 6.0
+        if order >= 4:
+            U = np.einsum("iab,a,b->i", self.quartic, d, d)
+            dU = np.einsum("iab,b->ia", self.quartic, d) + np.einsum("iab,a->ib", self.quartic, d)
+            g = g + (2.0 * mw * (L.T @ (Q * U)) + np.einsum("i,ia->a", Q ** 2, dU)) / 24.0
+        return g
+
+    def calculate(self, atoms, order=4):
+        """Anharmonic potential energy + forces at a displaced geometry -- the higher-order
+        analogue of Harmonic.calculate. The energy is the Taylor force field referenced to
+        the reference structure's electronic energy,
+
+            V = E0 + 1/2 sum_i a2_i Q_i^2 + 1/6 <cubic,d,d,Q> + 1/24 <quartic,d,d,Q^2>,
+
+        with Q the Gaussian normal coordinates of the Cartesian displacement d = x - x0.
+        `order` caps the expansion (2 = harmonic, 3 = +cubic, 4 = +quartic). Returns
+        {'energy': eV, 'forces': eV/A (flat 3N)}; needs the anharmonic fchk (cubic/quartic)."""
+        if self.cubic is None:
+            raise RuntimeError("VPT2.calculate needs the anharmonic force field "
+                               "(load a freq=anharmonic fchk via VPT2.from_fchk).")
+        assert np.allclose(atoms.numbers, self.molecules.numbers), \
+            "New structure atom order does not match the force field!"
+        d = (np.asarray(atoms.get_positions()) - self.positions0).reshape(-1)
+        results = {
+            "energy": self.E0 + self.taylor_energy(atoms, order=order),
+            "forces": -self._taylor_gradient(d, order=order),
+        }
+        self.results.update(results)
+        return results
+
     # ======================= full VPT2 X matrix ================================
     def _dxdQ_all(self):
         return self.gaussian_modes / np.repeat(self.masses, 3) ** 0.5     # (m, 3N)
