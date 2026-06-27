@@ -209,18 +209,11 @@ def write_multiwell(
 
     # formatting transition state lines
     reaction_lines.append("\n")
-    # Number of reaction channels declared for the wells. MULTIWELL sizes its
-    # per-well channel arrays (e.g. kuni) from this declared count; the count
-    # MUST equal the TOTAL number of forward reactions originating from the
-    # wells -- the transition-state channels PLUS any bimolecular reaction that
-    # is added below. If the bimolecular reaction is omitted from this count,
-    # MULTIWELL allocates kuni with too few channels and the 2023.1 solver
-    # overflows ('Index N of dimension 2 of array kuni above upper bound').
+    # Number of FORWARD reaction channels declared for the wells (the transition-state
+    # channels only). Any bimolecular reaction is emitted below as a MORERXN supplementary
+    # reaction, NOT a forward channel, so it must NOT be counted here.
     n_declared_channels = len(multiwell_channels)
-    if multiwell_methods.get("bimolecular_channel"):
-        # one bimolecular reaction (currently only one is supported)
-        n_declared_channels += 1
-    reaction_lines.append(f"{n_declared_channels}") # number of channels (TS + bimolecular)
+    reaction_lines.append(f"{n_declared_channels}") # number of forward (TS) channels
     for (n_well, n_ts, n_product) in multiwell_channels:
         dummy_name_keys = PES_data[str(n_ts)]["PES_items"].keys()
         dummy_name = list(dummy_name_keys)[0]
@@ -273,19 +266,26 @@ def write_multiwell(
             reaction_lines.append(line)
 
 
-    # bimolecular competing reaction if required.
+    # bimolecular competing reaction if required -- emitted as a MORERXN
+    # supplementary reaction (the working mechanism in MULTIWELL 2023.1).
     #
-    # The bimolecular reaction is emitted as an additional FORWARD reaction
-    # channel from the well (not as a separate MORERXN supplementary block).
-    # This is required for correctness with the MULTIWELL 2023.1 solver: a
-    # MORERXN reaction increments the well's supplementary-reaction count
-    # (nsmax) but is NOT included in the per-well channel allocation
-    # (largest = max(Nchan)). The stepper then indexes kuni up to
-    # Nchan(Mol) + nsmax(Mol), overrunning the array and aborting with
-    # 'Index 4 of dimension 2 of array kuni above upper bound of 3'.
-    # By declaring the bimolecular reaction as a forward channel it is counted
-    # in Nchan (and in the declared channel count above), so kuni is allocated
-    # large enough and the solver runs.
+    # A supplementary 2nd-order reaction (norder=2) is the bath-gas / co-reactant
+    # pseudo-first-order channel: the stepper computes ksup = Afc*exp(-Bsr/T) and
+    # uses rsup = numbdens*ksup (bookstep_mod.f), i.e. rate = Afc*[bath]*exp(-Bsr/T).
+    # To make the rate depend on the co-reactant (e.g. O2) concentration rather
+    # than the total bath, Afc carries the 2nd-order rate constant scaled by the
+    # co-reactant mole fraction (bimolecular_concentration); numbdens then supplies
+    # the total number density, recovering k2*[O2].
+    #
+    # Format after the forward-channel block:
+    #     'MORERXN'
+    #     <n_supplementary>
+    #     Mol  product  'Name'  order  Afc  Bsr(=Ea/R, K)  quench
+    #
+    # THERMO fits k(T)=A*exp(B/T); read_rate_from_thermo returns (A, -B), so the
+    # second value IS Ea/R in Kelvin -- exactly Bsr. (The earlier negative-A 'ILT'
+    # forward-channel encoding produced a NaN k(E) in 2023.1, where the matching
+    # `Press = -AA` bath factor is computed but never applied to the rate.)
     if multiwell_methods.get("bimolecular_channel"):
         bimolecular_channel = multiwell_methods["bimolecular_channel"]
 
@@ -293,34 +293,19 @@ def write_multiwell(
         n_product = bimolecular_channel[-1]
         n_well = bimolecular_channel[0]
 
-        A, B = multiwell_methods["bimolecular_rates"]
+        A, B = multiwell_methods["bimolecular_rates"]   # A (cm3 s-1), B = Ea/R (K)
 
-        # concentration of bath gas
+        # scale the 2nd-order A-factor by the co-reactant concentration (mole fraction)
         A *= bimolecular_concentration
 
-        bimol_dummy_name = "bimol" #FIXME this need to update to valid dummy name
+        bimol_dummy_name = "bimol"
 
-        # Emit the bimolecular reaction as a forward ILT channel using a
-        # NEGATIVE A-factor, which is MULTIWELL's microcanonical pseudo-first-
-        # order mechanism for a reaction of the well with the bath gas [B]:
-        # a negative AA sets Press = -AA (the 2nd-order rate constant, cm3 s-1)
-        # and the stepper multiplies the channel rate by the bath number
-        # density, recovering the pseudo-first-order rate A*[B]. This keeps the
-        # reaction counted in the well's Nchan (so kuni is allocated large
-        # enough; see note at the channel-count line) while preserving the
-        # canonical (A, B) computed by THERMO for the bimolecular reaction.
-        # Columns: Mol  ito  Name  RR  sym  Qel  l  AA  EE  <keywords>.
-        # AA carries the (negated) 2nd-order A-factor; EE is the activation
-        # energy E0 in kcal/mol. THERMO fits k(T) = A*exp(B/T) and
-        # read_rate_from_thermo returns B = -B(T), so Ea = R*B (R in kcal/mol/K).
-        R_kcal = 1.987204e-3  # gas constant, kcal/mol/K
-        activation_energy = R_kcal * B  # kcal/mol
-        line = f"{n_mol_dict[n_well]}   {n_mol_dict[n_product]}    {bimol_dummy_name:>10}   1.0   "
-        line += f"1   1.0   1   "
-        line += f"{-A:.6e}   {activation_energy:.4f}   "
-        line += "'NOREV' 'NOTUN' 'FAST' 'NOCENT' 'ILT'"
-
-        reaction_lines.append(line)
+        reaction_lines.append("'MORERXN'")
+        reaction_lines.append("1")  # number of supplementary reactions
+        reaction_lines.append(
+            f"{n_mol_dict[n_well]}  {n_mol_dict[n_product]}  '{bimol_dummy_name}'  2  "
+            f"{A:.6e}  {B:.4f}  0.0"
+        )
 
     # trial line
     reaction_lines.append("")
