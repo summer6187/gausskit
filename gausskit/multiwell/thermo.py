@@ -255,7 +255,15 @@ def write_thermo(
             item_mol_name_list.append(PES_data[PES_num]["PES_items"][item]["mol_name"])
             Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
             item_Mol_list.append(Mol)
-            forwards_barrier = PES_data[PES_num]["PES_energy"]
+            # A co-reactant written with "- X" (e.g. a bimolecular "TS - O2") shares the
+            # reactant reference and sits at energy 0; the section's PES_energy already has
+            # X subtracted, so it is the barrier of the "+" species (the TS) ALONE. Assigning
+            # the section energy to the "- X" co-reactant too would double-count it and collapse
+            # the barrier (e.g. O2 at +5.85 instead of 0 -> barrier 5.85-0-5.85 = 0).
+            if PES_data[PES_num]["PES_items"][item].get("plus_minus") == "-":
+                forwards_barrier = 0.0
+            else:
+                forwards_barrier = PES_data[PES_num]["PES_energy"]
             forwards_barrier_list.append(forwards_barrier)
         if PES_data[PES_num]["final_ts"]:
             reverse_PES_num = list(PES_data.keys())[n + 1]
