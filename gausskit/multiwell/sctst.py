@@ -20,6 +20,58 @@ module_dict = {
 }
 module = collections.namedtuple("module", module_dict.keys())(**module_dict)
 
+
+# --- anharmonic DOS engine selection -------------------------------------------------
+# Two engines compute the anharmonic vibrational density of states, with very different
+# complexity:
+#   * bdens      -- serial; EXACT recursive direct count below an energy switch, then
+#                   Wang-Landau above. Direct-count cost ~ s * N(Emax) ~ Emax^s / s!
+#                   (it enumerates every state it counts): polynomial of degree s in the
+#                   energy range, but EXPONENTIAL in the mode count s. Trivial for a few
+#                   modes, hopeless for many.
+#   * paradensum -- parallel (MPI) pure Wang-Landau. Cost ~ s * (Emax/grain)^~1 / nranks,
+#                   INDEPENDENT of the (exponential) state count: near-linear in the
+#                   energy range, linear in modes, parallelisable. Statistical (~few %).
+#
+# The two cross near s = 6 modes, and two independent criteria agree there:
+#   (1) MultiWell's own Wang-Landau cost prefactor b1 = 0.07544*s - 0.4317 is NEGATIVE
+#       for s <= 5 (zero at s = 5.72): the WL cost model is undefined below ~6 modes and
+#       bdens' WL stage misbehaves/crashes there -- this is exactly why a 1-mode O2
+#       crashes under the default "best man 10000" hybrid. For s <= 5 one MUST direct-count.
+#   (2) the enumerated state count N(Emax) ~ Emax^s / s! only blows up past s ~ 6.
+#
+# Vibrational modes step by 3 per atom (s = 3n-6 nonlinear, 3n-5 linear), so s = 5 is
+# skipped entirely and the boundary is exactly 3 vs 4 atoms:
+#   n <= 3 atoms (s <= 4: diatomics, H2O, CO2, HO2, ...)  -> bdens, pure direct count
+#   n >= 4 atoms (s >= 6: H2CO, the alkoxy well, products) -> paradensum, Wang-Landau
+# Any threshold in [5, 6] gives the same atom partition, so the choice is robust.
+DOS_WL_MIN_MODES = 6   # >= this many real vibrational modes -> Wang-Landau (paradensum)
+
+
+def n_vib_modes(mol):
+    """Number of real (positive) vibrational modes of ``mol`` (= 3n-6 or 3n-5)."""
+    return int(np.sum(np.asarray(mol.frequencies, dtype=float) > 0.0))
+
+
+def dos_engine_for_mol(mol):
+    """Pick the anharmonic DOS engine for ``mol`` by vibrational mode count.
+
+    Returns ``'bdens'`` (exact recursive direct count) for few-mode species
+    (<= 5 modes, i.e. <= 3 atoms) and ``'paradensum'`` (parallel Wang-Landau)
+    for larger ones. See the module note above for the scaling rationale.
+    """
+    return "bdens" if n_vib_modes(mol) < DOS_WL_MIN_MODES else "paradensum"
+
+
+def paradensum_configured():
+    """True if a ``paradensum_command`` is set in ~/.gausskitrc.
+
+    When it is absent the workflow falls back to (serial) ``bdens`` so the
+    pipeline still runs without an MPI build configured.
+    """
+    return bool(config.machine.get("paradensum_command"))
+
+
 def write_parsctst(
     mol:Molecules,
     fname:str = None,
@@ -159,6 +211,7 @@ def write_bdens(
     Egrain="10   3000   4000   50000",
     datfile:Path = Path("bdens.dat"),
     verbose:bool = False,
+    eswitch=None,
 ):
     """Write the ``bdens`` input file for anharmonic densities.
 
@@ -169,6 +222,12 @@ def write_bdens(
         datfile (Path, optional): Output file path. Defaults to ``bdens.dat``.
         verbose (bool, optional): Print progress information. Defaults to
             ``False``.
+        eswitch (optional): direct-count/Wang-Landau switch energy (cm-1). bdens
+            direct-counts below it (exact) and uses Wang-Landau above. Pass the
+            calculation's Emax to force PURE direct counting (no Wang-Landau) --
+            the correct, crash-free choice for few-mode species, where the WL
+            cost model is invalid (see ``dos_engine_for_mol``). ``None`` keeps
+            the default hybrid switch.
 
     Returns:
         None
@@ -192,7 +251,12 @@ def write_bdens(
     lines.append(" ")
     lines.append("0    'AMUA'")
     lines.append(" ")
-    lines.append(f'{Egrain}  {bdens_setting} ')
+    if eswitch is not None:
+        # KEYWORD(accuracy)  LTMODE(man)  MVAL(switch energy). MVAL=Emax => pure direct count.
+        setting = f"best   man   {int(float(eswitch))}"
+    else:
+        setting = bdens_setting
+    lines.append(f'{Egrain}  {setting} ')
     lines.append(f"'nochekstart'  {fname}.chk")
     lines.append(" ")
 

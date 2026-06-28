@@ -5,7 +5,8 @@ from gausskit.multiwell.mominert import (
 )
 from gausskit.multiwell.sctst import (
     write_parsctst, write_bdens, run_parsctst, run_bdens, fix_crp_file,
-    write_paradensum, run_paradensum,
+    write_paradensum, run_paradensum, _fix_paradensum_qvib,
+    dos_engine_for_mol, paradensum_configured, n_vib_modes, DOS_WL_MIN_MODES,
 )
 from gausskit.multiwell.densum import write_densum, run_densum
 from gausskit.multiwell.ktools import write_ktools, run_ktools
@@ -85,18 +86,26 @@ def run_PES_densdata(
         mol.krotor = krot
         mol.ad_rotor = ad_rot
 
-        # 2.2 write and run densum
+        # 2.2 write and run densum (harmonic DOS).
+        # In anharmonic mode the anharm loop (step 3) computes the DOS for every
+        # multi-atom species and would overwrite this harmonic .dens, so skip the
+        # redundant densum there. Skipping it also means a pre-placed anharmonic
+        # .dens is reused instead of being clobbered, and it stops a stray harmonic
+        # .dens from making the anharm-loop skip-guard wrongly skip (which would
+        # leave the bimolecular thermo without its .qvib). Single atoms (no
+        # vibrations) still go through densum -- the anharm loop skips them.
         datfile = f"{dummy_name}.vib"
         outfile = f"{dummy_name}.dens"
-        write_densum(
-            mol,
-            fname=dummy_name,
-            Egrain=Egrain,
-            datfile=densdata_path / datfile, 
-            verbose=verbose
-        )
-        if not dry:
-            run_densum(densdata_path / datfile, densdata_path / outfile, verbose=verbose)
+        if not (if_anharm and len(mol.numbers) > 1):
+            write_densum(
+                mol,
+                fname=dummy_name,
+                Egrain=Egrain,
+                datfile=densdata_path / datfile,
+                verbose=verbose
+            )
+            if not dry:
+                run_densum(densdata_path / datfile, densdata_path / outfile, verbose=verbose)
 
         # 2.3 write and run thermo file for each molecules
         if "default" in thermo_temp:
@@ -148,17 +157,57 @@ def run_PES_densdata(
                     datfile=datfile,
                     verbose=verbose
                 )
+                # The SCTST cumulative reaction probability is barrier- and
+                # concentration-independent; reuse a pre-placed .crp/.qcrp instead
+                # of recomputing the (expensive) parsctst when both already exist.
+                crp = densdata_path / f"{dummy_name}.crp"
+                qcrp = densdata_path / f"{dummy_name}.qcrp"
                 if not dry:
-                    run_parsctst(datfile, verbose)
-                    fix_crp_file(densdata_path / f"{dummy_name}.crp")
-                    fix_crp_file(densdata_path / f"{dummy_name}.qcrp")
+                    if crp.exists() and qcrp.exists():
+                        print(f"[Multiwell] reuse existing CRP/QCRP for {dummy_name} (skip parsctst)")
+                    else:
+                        run_parsctst(datfile, verbose)
+                        fix_crp_file(crp)
+                        fix_crp_file(qcrp)
 
             else:
-                # paradensum: parallel anharmonic density of states (replaces serial bdens)
-                datfile = densdata_path / f"{dummy_name}.paradensum.dat"
-                write_paradensum(mol, dummy_name, Egrain, datfile, verbose)
+                # Anharmonic vibrational DOS. The engine is chosen by mode count
+                # (dos_engine_for_mol): few-mode species (<= 5 modes / <= 3 atoms) use
+                # bdens' EXACT direct count -- O(N(Emax)), trivial and crash-free here --
+                # while larger species use paradensum's parallel Wang-Landau, whose cost is
+                # ~linear in the energy range and independent of the (exponential) state
+                # count. See the scaling note in sctst.py. The DOS is barrier-/
+                # concentration-independent, so a pre-placed .dens is reused.
+                dens = densdata_path / f"{dummy_name}.dens"
                 if not dry:
-                    run_paradensum(datfile, verbose)
+                    if dens.exists():
+                        print(f"[Multiwell] reuse existing DOS for {dummy_name} (skip)")
+                    else:
+                        engine = dos_engine_for_mol(mol)
+                        # Fall back to (serial) bdens if paradensum is not configured in
+                        # ~/.gausskitrc, so the pipeline still runs without an MPI build.
+                        if engine == "paradensum" and not paradensum_configured():
+                            print(f"[Multiwell] paradensum not configured -- falling back "
+                                  f"to bdens for {dummy_name} ({n_vib_modes(mol)} modes; "
+                                  f"serial Wang-Landau, may be slow)")
+                            engine = "bdens"
+                        if engine == "bdens":
+                            datfile = densdata_path / f"{dummy_name}.bdens.dat"
+                            # few-mode species: pure direct count (Eswitch = Emax). Large
+                            # fallback species (>= DOS_WL_MIN_MODES): keep the hybrid switch
+                            # (Wang-Landau above it), since pure direct count is infeasible.
+                            emax = Egrain.split()[-1] if n_vib_modes(mol) < DOS_WL_MIN_MODES else None
+                            write_bdens(mol, dummy_name, Egrain, datfile, verbose, eswitch=emax)
+                            run_bdens(datfile, verbose)
+                        else:
+                            datfile = densdata_path / f"{dummy_name}.paradensum.dat"
+                            write_paradensum(mol, dummy_name, Egrain, datfile, verbose)
+                            run_paradensum(datfile, verbose)
+                            # paradensum's .qvib needs the THERMO-layout patch before the
+                            # bimolecular thermo step can read it (anharmonic partition fn).
+                            qvib = densdata_path / f"{dummy_name}.qvib"
+                            if qvib.exists():
+                                _fix_paradensum_qvib(qvib)
 
     # 3.1 internal hindered rotor
     # prepare hindered rot calculations
