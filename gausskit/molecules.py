@@ -193,9 +193,22 @@ class Molecules(Atoms):
 
     @property
     def electronic_partition_function(self) -> float:
-        """return electronic partition function"""
+        """Electronic partition function (Qel) for the MultiWell deck.
+
+        Provenance is the quantum-chemistry spin multiplicity (2S+1): when not set
+        explicitly, Qel lazily defaults to the ground-state degeneracy =
+        ``multiplicity`` (mirroring the lazy ``optical_isomers`` pattern). This keeps
+        Qel available without a MultiWell ``thermo`` round-trip, so it survives
+        ``--dry`` runs and database reloads (which carry ``multiplicity`` but never
+        cached a Qel). Species with low-lying electronic levels ([[electronic_states]],
+        the ``name(spin-orbit)`` tag) should set this explicitly to override the
+        multiplicity default.
+        """
         if self._electronic_partition_function is None:
-            print("electronic_partition_function is not set")
+            if self._multiplicity is None:
+                print("electronic_partition_function is not set (multiplicity unknown)")
+                return self._electronic_partition_function
+            self._electronic_partition_function = float(self._multiplicity)
         return self._electronic_partition_function
 
     @electronic_partition_function.setter
@@ -367,6 +380,12 @@ class Molecules(Atoms):
         mol.charge = _charge
         mol.multiplicity = _mult
 
+        # Qel (electronic partition function for the MultiWell deck) is the QC spin
+        # multiplicity (2S+1). Source it here from the quantum-chemistry result so its
+        # provenance is correct and it is available unconditionally -- not read back
+        # later from a MultiWell ``thermo`` round-trip (which left it None under --dry).
+        mol.electronic_partition_function = _mult
+
         mol.set_optical_isomers()
 
         # sanity check
@@ -435,6 +454,9 @@ class Molecules(Atoms):
         mol_dict["external_symmetry_number"] = self._external_symmetry_number
         mol_dict["electronic_energy"] = self._electronic_energy
         mol_dict["optical_isomers"] = self.optical_isomers
+        # store the raw Qel: None (the common case) means "derive from multiplicity on
+        # access"; a non-None value preserves an explicit spin-orbit override.
+        mol_dict["electronic_partition_function"] = self._electronic_partition_function
         mol_dict["zpe"] = self._zpe
         mol_dict["frequencies"] = self._frequencies
         mol_dict["anharm_zpe"] = self._anharm_zpe
@@ -467,6 +489,8 @@ class Molecules(Atoms):
         new_mol._electronic_energy = mol_dict["electronic_energy"]
         new_mol._external_symmetry_number = mol_dict.get("external_symmetry_number")
         new_mol._optical_isomers = mol_dict.get("optical_isomers")
+        # absent (older databases) or None -> getter lazily derives Qel from multiplicity
+        new_mol._electronic_partition_function = mol_dict.get("electronic_partition_function")
         new_mol._zpe = mol_dict["zpe"]
         new_mol._frequencies = np.asarray(mol_dict["frequencies"])
         new_mol._anharm_zpe = mol_dict["anharm_zpe"]

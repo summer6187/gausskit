@@ -11,7 +11,7 @@ from gausskit.multiwell.sctst import (
 from gausskit.multiwell.densum import write_densum, run_densum
 from gausskit.multiwell.ktools import write_ktools, run_ktools
 from gausskit.multiwell.thermo import (
-    read_electronic_partition_function, write_thermo, write_single_thermo, run_thermo
+    write_thermo, run_thermo
 )
 from gausskit.multiwell.multiwell import (
     write_multiwell, run_multiwell, run_bimol_thermo
@@ -107,27 +107,13 @@ def run_PES_densdata(
             if not dry:
                 run_densum(densdata_path / datfile, densdata_path / outfile, verbose=verbose)
 
-        # 2.3 write and run thermo file for each molecules
-        if "default" in thermo_temp:
-            temp = "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000"
-        else:
-            temp = thermo_temp
-        write_single_thermo(
-            temp,
-            mol,
-            dummy_name,
-            densdata_path,
-            verbose=verbose,
-        )
-        datfile = densdata_path.absolute() / f"{dummy_name}.therm"
-        outfile = densdata_path.absolute() / f"{dummy_name}.therm.out"
-        if not dry:
-            run_thermo(datfile, outfile, verbose=verbose)
-
-        # 2.3.1 read Electronic partition function from thermo output files
-        if not dry:
-            qele = read_electronic_partition_function(outfile, verbose=verbose)
-            mol.electronic_partition_function = qele
+        # 2.3 Qel (electronic partition function) is sourced from the QC spin
+        # multiplicity (mol.electronic_partition_function defaults to 2S+1), set at
+        # parse time -- not read back from a per-species ``thermo`` run. The former
+        # write_single_thermo/run_thermo + read_electronic_partition_function round-trip
+        # only retrieved a value gausskit already had, and left Qel = None whenever
+        # thermo was skipped (e.g. ``--dry``). Removed; nothing else consumes the
+        # per-species .therm.out.
 
 
     # 3 run bdens and/or parsctst if anharm
