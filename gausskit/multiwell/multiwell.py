@@ -1,7 +1,7 @@
 from pathlib import Path
 import subprocess
 
-from gausskit.multiwell.thermo import write_thermo, run_thermo
+from gausskit.multiwell.thermo import write_thermo, run_thermo, parse_adj_barrier
 from gausskit.rdkit import get_lj_parameters
 from gausskit.settings import Configuration
 from gausskit._defaults import colliders
@@ -45,6 +45,12 @@ def write_multiwell(
     multiwell_channels = multiwell_methods["channels"]
     multiwell_tunneling = multiwell_methods["tunneling"]
     multiwell_methods["anharm"]
+    # adj_barrier: {NAME: barrier} overrides for the forward (unimolecular) channels.
+    # The named species may be any channel's TS (matched by short or full name); the
+    # bimolecular O2 channel's barrier is handled separately via the bimol thermo. Names
+    # not matching a forward channel here are simply skipped (they may belong to the bimol
+    # reaction), so we do NOT validate-and-raise in this path.
+    adj_overrides = parse_adj_barrier(multiwell_methods.get("adj_barrier", []))
 
     # gather PES_info
     # item_list: Mol1, TS2, Mol3
@@ -240,6 +246,12 @@ def write_multiwell(
         # SCTST, E0 is set to the larger of zero, or the enthalpy difference (at 0 K) between
         # product and reactant; i.e. E0 = MAX[ 0.0 , (∆H(ito) – ∆H((Mol)].
         relative_critical_energy = PES_data[str(n_ts)]["PES_energy"]
+        # adj_barrier override for this forward channel (named by short or full TS name).
+        ts_mol_name = PES_data[str(n_ts)]["PES_items"][dummy_name].get("mol_name", dummy_name)
+        if dummy_name in adj_overrides:
+            relative_critical_energy = adj_overrides[dummy_name]
+        elif ts_mol_name in adj_overrides:
+            relative_critical_energy = adj_overrides[ts_mol_name]
 
         line = f"{n_mol_dict[n_well]}  {n_mol_dict[n_product]}  {dummy_name:>10}  {rotational_parameter:.4f}   "
         line += f"{external_symmetry_number}   {electronic_partition_function}   {chiral_stereoisomers}   "
@@ -360,7 +372,7 @@ def get_thermo_methods(
         "tunneling": False,
         "hinderedrotor": False,
         "anharm": multiwell_methods["anharm"],
-        "adj_barrier": [],
+        "adj_barrier": multiwell_methods.get("adj_barrier", []),
         "temperatures": f"{multiwell_methods['temperature']}",
         "pressures": multiwell_methods["pressures"],
     }

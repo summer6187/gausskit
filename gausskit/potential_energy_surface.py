@@ -438,6 +438,13 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
         multiwell_tunneling = config_getboolean(config, "Multiwell", "tunneling")
         multiwell_anharm = config_getboolean(config, "Multiwell", "anharm")
 
+        # optional empirical barrier adjustment, applied to the bimolecular
+        # thermo fit (e.g. "adj_barrier: 1.85" or "adj_barrier: TS16=1.85")
+        if Multiwell_method.get("adj_barrier"):
+            multiwell_adj_barrier = list(Multiwell_method["adj_barrier"].split())
+        else:
+            multiwell_adj_barrier = []
+
         # bimolecular reaction is optional
         if Multiwell_method.get("bimolecular_channel"):
             multiwell_bimolecular_channel = ast.literal_eval(Multiwell_method["bimolecular_channel"])
@@ -468,6 +475,7 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
             "anharm": multiwell_anharm,
             "bimolecular_channel": multiwell_bimolecular_channel,
             "bimolecular_concentrations": multiwell_bimolecular_concentrations,
+            "adj_barrier": multiwell_adj_barrier,
             "trails": multiwell_trail_line,
         }
 

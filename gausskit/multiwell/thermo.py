@@ -200,6 +200,95 @@ def get_thermo_lines(
     lines.append(f"  {os.linesep}")
     return lines
 
+
+def parse_adj_barrier(adj_barrier):
+    """Parse the ``adj_barrier`` spec into per-species barrier overrides.
+
+    ``adj_barrier`` is the white-space-split list read from the INI
+    (``[Thermo]``/``[Multiwell]`` key ``adj_barrier``). Every entry MUST name the
+    species explicitly as ``NAME=VALUE`` -- a bare value is rejected so the code
+    never has to guess which transition state to adjust:
+
+    * ``NAME``  -- the channel/TS to adjust, given either by its full name as
+      written in the ``[PES...]`` section (e.g. ``Alkoxyl133a-HLeave_O2_another_ts``)
+      or by its short deck name (e.g. ``TS16``).
+    * ``VALUE`` -- the new *absolute* forward-barrier height in kcal/mol.
+
+    Any number of channels may be adjusted in one line, e.g.::
+
+        adj_barrier: Alkoxyl133a-HLeave_O2_another_ts=1.85 Alkoxyl133a-RLeave_ts=10.0
+
+    (entries may be separated by white space and/or commas.)
+
+    Returns:
+        dict: ``{name: barrier}`` (absolute kcal/mol).
+
+    Raises:
+        ValueError: an entry is not in ``NAME=VALUE`` form (e.g. a bare value).
+    """
+    overrides = {}
+    for token in adj_barrier or []:
+        token = token.strip().rstrip(",").strip()
+        if not token:
+            continue
+        if "=" not in token:
+            raise ValueError(
+                f"adj_barrier entry '{token}' must name the species as NAME=VALUE "
+                f"(e.g. 'Alkoxyl133a-RLeave_ts=10.0'); a bare value is not allowed -- "
+                f"name the channel explicitly so the TS to adjust is unambiguous."
+            )
+        name, _, value = token.partition("=")
+        name = name.strip()
+        if not name:
+            raise ValueError(f"adj_barrier entry '{token}' has an empty species name.")
+        overrides[name] = float(value)
+    return overrides
+
+
+def apply_adj_barrier(item_list, item_mol_name_list, item_Mol_list,
+                      forwards_barrier_list, adj_barrier, verbose=False):
+    """Override forward barriers per the ``adj_barrier`` spec (any named channel).
+
+    Each ``NAME=VALUE`` replaces the forward barrier of the matching channel,
+    matched against EITHER its short deck name (``item_list``, e.g. ``TS16``) OR
+    its full ``[PES...]`` name (``item_mol_name_list``). Any channel can be
+    adjusted, not only a unique TS. A no-op when ``adj_barrier`` is empty.
+
+    Returns a new ``forwards_barrier_list``.
+
+    Raises:
+        ValueError: a named species matches nothing in this reaction.
+    """
+    if not adj_barrier:
+        return forwards_barrier_list
+
+    overrides = parse_adj_barrier(adj_barrier)
+
+    new_list = list(forwards_barrier_list)
+    matched = set()
+    for i, (dummy, molname, mol, old) in enumerate(
+        zip(item_list, item_mol_name_list, item_Mol_list, forwards_barrier_list)
+    ):
+        key = dummy if dummy in overrides else (molname if molname in overrides else None)
+        if key is None:
+            continue
+        new_list[i] = overrides[key]
+        matched.add(key)
+        if not getattr(mol, "ts", False):
+            print(f"{module:10} Warning: adj_barrier target '{key}' is not a "
+                  f"transition state; adjusting its barrier anyway")
+        print(f"{module:10} adj_barrier: {key} ({dummy}) forward barrier "
+              f"{old:.4f} -> {overrides[key]:.4f} kcal/mol")
+
+    unmatched = sorted(set(overrides) - matched)
+    if unmatched:
+        raise ValueError(
+            f"adj_barrier name(s) {unmatched} not found in this reaction; "
+            f"available short names {item_list}, full names {item_mol_name_list}"
+        )
+    return new_list
+
+
 def write_thermo(
     PES_data,
     thermo_methods,
@@ -227,7 +316,7 @@ def write_thermo(
     if_tunneling = thermo_methods["tunneling"]
     if_hinderedrotor = thermo_methods["hinderedrotor"]
     if_anharm = thermo_methods["anharm"]
-    thermo_methods["adj_barrier"]
+    adj_barrier = thermo_methods.get("adj_barrier", [])
     thermo_temp = thermo_methods["temperatures"]
     thermo_pressure = thermo_methods["pressures"]
 
@@ -269,6 +358,15 @@ def write_thermo(
             reverse_PES_num = list(PES_data.keys())[n + 1]
             backwards_barrier = PES_data[reverse_PES_num]["reverse"]
             break
+
+    # apply any empirical barrier adjustment to the named channel(s) (e.g.
+    # 'Alkoxyl133a-HLeave_O2_another_ts=1.85') before the thermo fit -- this is
+    # what changes the channel's k(T)/Ea (and the MORERXN Ea/R for the bimol O2
+    # channel), with no hand-editing of the deck.
+    forwards_barrier_list = apply_adj_barrier(
+        item_list, item_mol_name_list, item_Mol_list, forwards_barrier_list,
+        adj_barrier, verbose=verbose,
+    )
 
     # prepare hindered rot calculations
     # hindrot_item_Mol_dict: Molecule Objects if exists hindrot calculation
