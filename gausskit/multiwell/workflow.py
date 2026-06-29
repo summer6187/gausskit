@@ -56,12 +56,19 @@ def run_PES_densdata(
     item_mol_name_list = []
     # item_Mol_list: 3 Molecules objects
     item_Mol_list = []
+    # PES_num each item came from -- lets the parsctst step pull that TS's own Vf/Vr.
+    item_PESnum_list = []
+    # Legacy single-TS fallback (thermo/ktools path); 0 keeps a TS referenced to its own
+    # zero-point if no per-TS or final_ts barrier is available.
+    forwards_barrier = 0
+    backwards_barrier = 0
     for n, PES_num in enumerate(PES_data):
         for item in PES_data[PES_num]["PES_items"]:
             item_list.append(item)
             item_mol_name_list.append(PES_data[PES_num]["PES_items"][item]["mol_name"])
             Mol = PES_data[PES_num]["PES_items"][item]["Mol"]
             item_Mol_list.append(Mol)
+            item_PESnum_list.append(PES_num)
         if PES_data[PES_num]["final_ts"]:
             forwards_barrier = PES_data[PES_num]["PES_energy"]
             reverse_PES_num = list(PES_data.keys())[n + 1]
@@ -134,7 +141,16 @@ def run_PES_densdata(
             if mol.ts:
                 # parsctst
                 datfile = densdata_path / f"{dummy_name}.parsctst.dat"
-                barrier = [forwards_barrier, backwards_barrier]
+                # This TS's OWN ZPE-corrected Vf/Vr (set by run_multiwell_workflow from its own
+                # channel). Fall back to the single forward/backward barrier only for the legacy
+                # one-TS path (thermo/ktools), where per-TS values were never stored.
+                pes_num = item_PESnum_list[n]
+                vf = PES_data[pes_num].get("Vf")
+                vr = PES_data[pes_num].get("Vr")
+                if vf is not None and vr is not None:
+                    barrier = [vf, vr]
+                else:
+                    barrier = [forwards_barrier, backwards_barrier]
                 write_parsctst(
                     mol=mol,
                     fname=dummy_name,
@@ -361,6 +377,18 @@ def run_multiwell_workflow(
     if_anharm = multiwell_methods["anharm"]
 
     densdata_path = multiwell_path.absolute() / "DensData"
+
+    # Per-TS ZPE-corrected forward/reverse barriers for the SCTST CRP. Each TS carries its OWN
+    # Vf/Vr from its own channel (well -> TS -> product) -- NOT the single bimolecular barrier
+    # broadcast to every TS. parsctst (run_PES_densdata) reads these from PES_data[n_ts]; TSs
+    # without them (e.g. the bimolecular channel, handled by the bimol thermo) keep the legacy
+    # single-barrier path.
+    for (n_well, n_ts, n_product) in multiwell_methods.get("channels", []):
+        e_well = PES_data[str(n_well)]["PES_energy"]
+        e_ts = PES_data[str(n_ts)]["PES_energy"]
+        e_product = PES_data[str(n_product)]["PES_energy"]
+        PES_data[str(n_ts)]["Vf"] = e_ts - e_well
+        PES_data[str(n_ts)]["Vr"] = e_ts - e_product
 
     # run density of state data
     run_PES_densdata(
