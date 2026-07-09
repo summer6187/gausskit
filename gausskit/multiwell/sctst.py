@@ -2,6 +2,7 @@
 from pathlib import Path
 import re
 import subprocess
+import time
 import collections
 
 import numpy as np
@@ -19,6 +20,50 @@ module_dict = {
     "pd": "[Paradensum]",
 }
 module = collections.namedtuple("module", module_dict.keys())(**module_dict)
+
+
+def _run_mpi_wl(command, cwd, label, name):
+    """Run an MPI Wang-Landau job (``parsctst``/``paradensum``) with live progress.
+
+    These programs print nothing to stdout while working -- their Wang-Landau iteration
+    counter (``Iteration = N/Nf``) is written to ``Rank0.txt`` -- so a plain blocking call
+    reads as a hang in ``gausskit run``. Launch the job non-blocking and echo each new
+    iteration; fall back to a start/done banner if ``Rank0.txt`` never appears (e.g. the
+    deck's writing flag is off). Blocks until the job finishes, like ``subprocess.call``.
+
+    Args:
+        command (str): Shell command that launches the MPI program.
+        cwd (Path): Working directory where ``Rank0.txt`` is written.
+        label (str): Module tag for the printed lines (e.g. ``module.pd``).
+        name (str): Species/TS name (the deck's first line) for the messages.
+
+    Returns:
+        int: The process exit code.
+    """
+    rank0 = cwd / "Rank0.txt"
+    print(f"{label:11} Wang-Landau for '{name}' (MPI) -- this can take several minutes...")
+    t0 = time.time()
+    proc = subprocess.Popen(command, shell=True)
+    last = None
+    while proc.poll() is None:
+        time.sleep(2.0)
+        try:
+            lines = rank0.read_text().splitlines() if rank0.exists() else []
+        except OSError:
+            lines = []
+        cur = None
+        for line in reversed(lines):
+            m = re.search(r"Iteration\s*=\s*(\d+)\s*/\s*(\d+)", line)
+            if m:
+                cur = (m.group(1), m.group(2))
+                break
+        if cur and cur != last:
+            last = cur
+            print(f"{label:11}   {name}: Wang-Landau iteration "
+                  f"{cur[0]}/{cur[1]} ({int(time.time() - t0)}s elapsed)")
+    rc = proc.wait()
+    print(f"{label:11} '{name}' done in {int(time.time() - t0)}s (exit {rc})")
+    return rc
 
 
 # --- anharmonic DOS engine selection -------------------------------------------------
@@ -368,7 +413,11 @@ def run_parsctst(
     command = f"cd {cwd}; " + config.machine.parsctst_command
     if verbose:
         print(f"{module.p:11} Run command: {command}")
-    subprocess.call(command, shell=True)
+    try:
+        name = Path(datfile).read_text().splitlines()[0].strip()
+    except (OSError, IndexError):
+        name = datfile.stem
+    _run_mpi_wl(command, cwd, module.p, name)
 
 def run_bdens(
     datfile:Path = Path("bdens.dat"),
@@ -439,7 +488,12 @@ def run_paradensum(
     command = f"cd {cwd}; " + config.machine.paradensum_command
     if verbose:
         print(f"{module.pd:11} Run command: {command}")
-    subprocess.call(command, shell=True)
+
+    try:
+        species = Path(datfile).read_text().splitlines()[0].strip()
+    except (OSError, IndexError):
+        species = datfile.stem
+    _run_mpi_wl(command, cwd, module.pd, species)
 
     # paradensum's .qvib omits the KEYWORD2 field (and inserts a stray blank line) on the
     # energy-grid line that THERMO's reader requires (read_dat.f reads 4 fields there); patch
