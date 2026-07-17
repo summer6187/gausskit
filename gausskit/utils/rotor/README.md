@@ -50,9 +50,17 @@ rotors. No `patch_thermo_hrd.py` / `build_sctst_hrd.py` post-processing.
 
 Options: `--species NAME` (else auto: the result's log stem or the unique `*TS*` species);
 `--set-dir DIR` (rewrite `[Thermo] dir:` so a variant writes to its own output dir); `--set-anharm
-False|True|ts`. The **`anharm: ts`** tri-state (`[Thermo] anharm`) = SCTST/crp for the TS species
-only, native **harmonic reactant/wells** — the "isolate the TS treatment" model (retires the
-reactant-splice step and fixes external-symmetry mismatches at the source).
+False|True|ts`. The `[Thermo] anharm` tri-state:
+
+- **`True`** — full VPT2 on **every** species (reactant/products via `paradensum`, TS via
+  `parsctst`) plus Vhrd2 on the TS soft modes. The physically-complete anharmonic rate; Vhrd2 does
+  not conflict with VPT2, it replaces exactly the TS soft modes VPT2 can't represent.
+- **`ts`** — SCTST/crp for the TS only, native harmonic reactant/wells — the "isolate the TS
+  treatment" comparison (fast; also fixes external-symmetry mismatches at the source). Note
+  `[Method] Anharm: True` already gives every species its anharmonic ZPE, so `ts` vs `True` differ
+  only in the reactant/product *vibrational partition function* — negligible for stiff reactants
+  (verified ≡ to 0.1% on the Na+CFxCly kit) but worth `True` when a reactant has floppy modes.
+- **`False`** — harmonic (CTST).
 
 **KTOOLS is excluded:** native ktools segfaults on Vhrd2 (`uhrlev ev(2000)`), so `[HRD]` on a
 `[Ktools]`-run PES prints a warning and is skipped in the ktools deck — use `gausskit vtst --dens`
