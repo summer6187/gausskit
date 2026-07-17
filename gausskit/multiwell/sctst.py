@@ -464,7 +464,12 @@ def fix_crp_file(filename, add_text="GOOD   VPT4A"):
         None
     """
     lines = Path(filename).read_text().splitlines()
-    egr = re.compile(r"^\s*[\d.]+(?:\s+[\d.]+){3,}\s*$")   # >=4 numeric fields, no trailing keyword
+    # >=4 numeric fields, no trailing keyword. Fields may be SIGNED / scientific: a submerged or
+    # near-zero barrier gives a negative forward height Vf on this grid line (e.g. CFCl3+Na, Vf=-12.21),
+    # which a digits-and-dots-only pattern would miss -> the GOOD/VPTx fix silently skips it and THERMO
+    # then fails to parse the qcrp. Allow a leading sign and exponent per field.
+    _num = r"[-+]?[\d.]+(?:[eE][-+]?\d+)?"
+    egr = re.compile(rf"^\s*{_num}(?:\s+{_num}){{3,}}\s*$")
     nsum = 0
     done = False
     out = []
