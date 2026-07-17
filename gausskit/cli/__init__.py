@@ -278,3 +278,129 @@ def ktools_rates(canonical, outfile, direction, minflux, block, pretty):
     else:
         click.echo(text)
     finish_line()
+
+
+@utils.group()
+def rotor():
+    """Determine per-soft-mode rotor information: detect | scan | fit.
+
+    detect classifies each soft mode and writes a hand-editable rotor_plan.yaml roadmap
+    (per mode: rigid-rotor | mode-scan | harmonic). scan turns the roadmap into Gaussian
+    scan inputs; fit reads the pulled logs back into levels, Vhrd2/HRD deck blocks, and a
+    q(HRD/DVR) validation.
+    """
+
+
+@rotor.command(name="detect")
+@click.argument("log", type=complete_files)
+@click.option("-o", "--output", default="rotor_plan.yaml", show_default=True, type=click.Path(),
+              help="roadmap YAML to write")
+@click.option("--auto", "method", flag_value="auto", default=True,
+              help="classifier decides each mode's method (default)")
+@click.option("--rigid-rotor", "method", flag_value="rigid-rotor",
+              help="force every soft mode to rigid-rotor (needs 2 fragments)")
+@click.option("--mode-scan", "method", flag_value="mode-scan",
+              help="force every soft mode to mode-scan (rectilinear well)")
+@click.option("-s", "--soft-cut", default=200.0, show_default=True,
+              help="cm^-1: at/above this a mode is stiff -> harmonic (no scan)")
+@click.option("--rot-min", default=0.60, show_default=True,
+              help="min rigid-rotation fraction to auto-route a mode to rigid-rotor")
+@click.option("-n", "--nmax", default=6, show_default=True, help="examine this many lowest real modes")
+@click.option("--tol", default=1.3, show_default=True, help="covalent-bond tolerance for fragmentation")
+@click.option("--route", default=None, help="Gaussian route for the scan gjf [default: M06-2X/def2TZVP]")
+@click.option("--charge-mult", "charge_mult", default="0 2", show_default=True)
+def rotor_detect(log, output, method, soft_cut, rot_min, nmax, tol, route, charge_mult):
+    """Classify LOG's soft modes and write the hand-editable rotor_plan.yaml roadmap.
+
+    LOG is a Gaussian freq (or freq=anharmonic) .log. Prints the decision table and writes
+    the roadmap; edit each mode's 'method' (and axis/I/grid) freely, then run
+    `gausskit utils rotor scan <roadmap>`.
+    """
+    from gausskit.utils.rotor import classify_modes, format_table, build_plan, dump_plan
+    click.echo(format_table(classify_modes(log, soft_cut=soft_cut, rot_min=rot_min,
+                                           nmax=nmax, tol=tol)))
+    plan, warnings = build_plan(log, method=method, soft_cut=soft_cut, rot_min=rot_min,
+                                nmax=nmax, tol=tol, route=route, charge_mult=charge_mult)
+    for w in warnings:
+        click.echo(f"! {w}")
+    dump_plan(plan, output)
+    click.echo(f"\nwrote roadmap -> {output}   (edit 'method' per mode, then: "
+               f"gausskit utils rotor scan {output})")
+    finish_line()
+
+
+@rotor.command(name="scan")
+@click.argument("plan_file", type=complete_files)
+@click.option("-o", "--outdir", default="rotor_scan", show_default=True, help="output directory")
+@click.option("--nproc", default=16, show_default=True, help="%nprocshared written into each gjf")
+@click.option("--mem", default="16GB", show_default=True, help="%mem written into each gjf")
+def rotor_scan(plan_file, outdir, nproc, mem):
+    """Generate scan geometry (gjf) from a rotor_plan.yaml (dispatches per mode's method).
+
+    rigid-rotor modes -> curvilinear rotation scans; mode-scan modes -> rectilinear
+    eigenvector scans; harmonic modes skipped. Input structures only -- submit externally
+    and pull the *.log back for `gausskit utils rotor fit`.
+    """
+    from gausskit.utils.rotor import load_plan, emit_scans
+    plan = load_plan(plan_file)
+    written = emit_scans(plan, outdir, mem=mem, nproc=nproc)
+    nmodes = sum(1 for m in plan["modes"] if m["method"] != "harmonic")
+    click.echo(f"wrote {len(written)} gjf across {nmodes} scanned modes -> {outdir}/ "
+               "(input structures only -- submit however you like)")
+    finish_line()
+
+
+@rotor.command(name="patch")
+@click.argument("result", type=complete_files)
+@click.option("--input", "pes_in", required=True, type=complete_files,
+              help="the PES.in to derive the HRD variant from")
+@click.option("-o", "--output", default=None, type=click.Path(),
+              help="output PES file [default: <input-stem>_hrd.in]")
+@click.option("--species", default=None,
+              help="PES species carrying the HRDs [default: auto from the result's log / unique *TS*]")
+@click.option("--set-dir", "set_dir", default=None,
+              help="rewrite the [Thermo] dir: line (give the variant its own output dir)")
+@click.option("--set-anharm", "set_anharm", default=None,
+              type=click.Choice(["False", "True", "ts"]),
+              help="rewrite [Method] Anharm / [Thermo] anharm ('ts' = SCTST for the TS, harmonic reactant)")
+def rotor_patch(result, pes_in, output, species, set_dir, set_anharm):
+    """Declare fitted HRDs in a PES.in: write an [HRD] section referencing RESULT.
+
+    RESULT is a rotor_result.json (from `gausskit utils rotor fit`; legacy hrd_params.json also
+    accepted). `gausskit run` on the patched PES then emits the hrd/Vhrd2/Bhrd1 deck blocks
+    natively (THERMO/DENSUM + separable-HRD SCTST) -- no post-hoc deck patching.
+    """
+    from pathlib import Path
+    from gausskit.utils.rotor.patch import patch_pes
+    out = Path(output) if output else Path(pes_in).with_name(Path(pes_in).stem + "_hrd.in")
+    patch_pes(result, pes_in, out, species=species, set_dir=set_dir, set_anharm=set_anharm)
+    click.echo(f"run it with: gausskit run {out} --dry")
+    finish_line()
+
+
+@rotor.command(name="fit")
+@click.argument("plan_file", type=complete_files)
+@click.argument("scan_dir", type=complete_files)
+@click.option("-o", "--output", default="rotor_result.json", show_default=True, type=click.Path(),
+              help="per-mode rotor result JSON to write")
+@click.option("--dvr-emax", default=14000.0, show_default=True, help="cm^-1 ceiling for the gold-standard DVR")
+@click.option("--no-figure", is_flag=True, help="skip the fit_validation.png/.csv")
+def rotor_fit(plan_file, scan_dir, output, dvr_emax, no_figure):
+    """Fit the scanned modes -> levels, Vhrd2/HRD deck blocks, and q(HRD/DVR) validation.
+
+    Reads the per-mode anchor from PLAN_FILE and the pulled logs under SCAN_DIR/mode{k}/,
+    dispatching rigid-rotor (periodic-rotor DVR) vs mode-scan (sinc-DVR). Writes
+    rotor_result.json (+ fit_validation figure). A mode with an incomplete pull raises.
+    """
+    from gausskit.utils.rotor import load_plan, fit_rotors
+    plan = load_plan(plan_file)
+    results = fit_rotors(plan, scan_dir, output, dvr_emax=dvr_emax, figure=not no_figure)
+    for r in results:
+        if r["method"] == "harmonic":
+            continue
+        q = r["q_HRD_over_DVR"]
+        click.echo(f"mode {r['mode']} ({r['method']}): B={r.get('B_cm')} cm-1, "
+                   f"RMS={r.get('fit_RMS_cm')} cm-1, "
+                   f"q(HRD/DVR) 300/700/1000K = {q.get('300')}/{q.get('700')}/{q.get('1000')}")
+    click.echo(f"wrote {output}" + ("" if no_figure else " + <output-stem>.validation.png/.csv"))
+    finish_line()
