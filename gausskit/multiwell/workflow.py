@@ -20,15 +20,30 @@ from gausskit.settings import Configuration
 
 config = Configuration()
 
+
+def _echo(tag, msg):
+    """Transparency line: what file was prepared / what command runs at this step."""
+    print(f"  {tag:6} {msg}")
+
+
+def _hrd_for(hrd_map, mol_name):
+    """The declared fitted-mode list for a species (case-insensitive), or None."""
+    if not hrd_map:
+        return None
+    entry = hrd_map.get(str(mol_name).lower())
+    return entry["modes"] if entry else None
+
+
 def run_PES_densdata(
     PES_data:dict,
     densdata_path:Path = Path("DensData"),
     thermo_temp:str = "200 300 400 500 600 800 1000 1200 1400 1600 1800 2000",
     Egrain:str = "10   3000   4000   50000",
     if_hinderedrotor:bool = False,
-    if_anharm:bool = False,
+    if_anharm = False,
     dry:bool = False,
     verbose:bool = True,
+    hrd_map:dict = None,
 ):
     """Prepare density of states data for a full PES.
 
@@ -39,9 +54,12 @@ def run_PES_densdata(
         thermo_temp (str, optional): Temperature grid string.
         Egrain (str, optional): Energy grain specification.
         if_hinderedrotor (bool, optional): Include hindered rotor treatment.
-        if_anharm (bool, optional): Enable anharmonic calculations.
+        if_anharm: ``False`` | ``True`` | ``"ts"`` (anharm for TS species only;
+            wells/reactants stay harmonic).
         dry (bool, optional): Skip execution of external programs.
         verbose (bool, optional): Print progress. Defaults to ``True``.
+        hrd_map (dict, optional): ``{species_lower: {"path", "modes"}}`` from a PES.in
+            ``[HRD]`` section — scan-fitted Vhrd2 rotors emitted natively in the decks.
 
     Returns:
         dict: Mapping from dummy names to reduced moments when hindered rotors
@@ -75,15 +93,21 @@ def run_PES_densdata(
     # 2 write and run mominert and densum
     for n, (dummy_name, Mol) in enumerate(zip(item_list, item_Mol_list)):
         mol = Mol
+        mol_name = item_mol_name_list[n]
+        hrd_modes = _hrd_for(hrd_map, mol_name)
+        print(f"prep {mol_name} ({dummy_name}):")
 
         # 2.1 write and run mominert
         datfile = f"{dummy_name}.coords"
         outfile = f"{dummy_name}.coords.out"
         write_mominert(mol, datfile=densdata_path / datfile, verbose=verbose)
+        _echo("write", f"{densdata_path / datfile} (mominert input)")
+        _echo("exec", f"mominert {datfile} -> {outfile}")
         run_mominert(densdata_path / datfile, densdata_path / outfile, verbose=verbose)
         krot, ad_rot = get_rotor(densdata_path / outfile, verbose=verbose)
         mol.krotor = krot
         mol.ad_rotor = ad_rot
+        _echo("read", f"{densdata_path / outfile} (Krot={krot:.4f}, ADrot={ad_rot:.4f} amu*A2)")
 
         # 2.2 write and run densum
         datfile = f"{dummy_name}.vib"
@@ -92,11 +116,17 @@ def run_PES_densdata(
             mol,
             fname=dummy_name,
             Egrain=Egrain,
-            datfile=densdata_path / datfile, 
-            verbose=verbose
+            datfile=densdata_path / datfile,
+            verbose=verbose,
+            hrd_modes=hrd_modes,
         )
+        _echo("write", f"{densdata_path / datfile} (densum input"
+              + (f", {len(hrd_modes)} HRD" if hrd_modes else "") + ")")
         if not dry:
+            _echo("exec", f"densum {datfile} -> {outfile}")
             run_densum(densdata_path / datfile, densdata_path / outfile, verbose=verbose)
+        else:
+            _echo("skip", f"densum {datfile} [--dry]")
 
         # 2.3 write and run thermo file for each molecules
         if "default" in thermo_temp:
@@ -109,11 +139,16 @@ def run_PES_densdata(
             dummy_name,
             densdata_path,
             verbose=verbose,
+            hrd_modes=hrd_modes,
         )
         datfile = densdata_path.absolute() / f"{dummy_name}.therm"
         outfile = densdata_path.absolute() / f"{dummy_name}.therm.out"
+        _echo("write", f"{datfile} (single-species thermo input)")
         if not dry:
+            _echo("exec", f"thermo {datfile.name} -> {outfile.name}")
             run_thermo(datfile, outfile, verbose=verbose)
+        else:
+            _echo("skip", f"thermo {datfile.name} [--dry]")
 
         # 2.3.1 read Electronic partition function from thermo output files
         if not dry:
@@ -124,6 +159,8 @@ def run_PES_densdata(
     # 3 run bdens and/or parsctst if anharm
     # prepare bdens.dat or parsctst.dat
     # we only have one parsctst mission, so only one set of forw. backw. barrier
+    # if_anharm == "ts": SCTST (parsctst/crp) for the TS species only; wells/reactants
+    # keep their harmonic blocks (no paradensum) -- the isolate-the-TS-treatment model.
     if if_anharm:
         if verbose:
             print("---------------anharmonic(sctst)---------------")
@@ -137,7 +174,9 @@ def run_PES_densdata(
                 continue
 
             if mol.ts:
-                # parsctst
+                # parsctst; declared HRD modes leave the coupled X-matrix and are
+                # emitted as separable Vhrd2 rotors.
+                hrd_modes = _hrd_for(hrd_map, mol_name)
                 datfile = densdata_path / f"{dummy_name}.parsctst.dat"
                 barrier = [forwards_barrier, backwards_barrier]
                 write_parsctst(
@@ -146,19 +185,32 @@ def run_PES_densdata(
                     barrier=barrier,
                     Egrain=Egrain,
                     datfile=datfile,
-                    verbose=verbose
+                    verbose=verbose,
+                    hrd_modes=hrd_modes,
                 )
+                _echo("write", f"{datfile} (parsctst deck"
+                      + (f", {len(hrd_modes)} separable HRD" if hrd_modes else "") + ")")
                 if not dry:
+                    _echo("exec", f"parsctst {datfile.name} -> {dummy_name}.crp/.qcrp")
                     run_parsctst(datfile, verbose)
                     fix_crp_file(densdata_path / f"{dummy_name}.crp")
                     fix_crp_file(densdata_path / f"{dummy_name}.qcrp")
+                else:
+                    _echo("skip", f"parsctst {datfile.name} [--dry]")
+
+            elif if_anharm == "ts":
+                _echo("skip", f"paradensum {dummy_name} (anharm: ts -- harmonic well/reactant)")
 
             else:
                 # paradensum: parallel anharmonic density of states (replaces serial bdens)
                 datfile = densdata_path / f"{dummy_name}.paradensum.dat"
                 write_paradensum(mol, dummy_name, Egrain, datfile, verbose)
+                _echo("write", f"{datfile} (paradensum input)")
                 if not dry:
+                    _echo("exec", f"paradensum {datfile.name}")
                     run_paradensum(datfile, verbose)
+                else:
+                    _echo("skip", f"paradensum {datfile.name} [--dry]")
 
     # 3.1 internal hindered rotor
     # prepare hindered rot calculations
@@ -253,6 +305,7 @@ def run_thermo_workflow(
     Egrain:str = "10   3000   4000   50000",
     dry:bool = False,
     verbose:bool = False,
+    hrd_map:dict = None,
 ):
     """Run a full thermo calculation workflow.
 
@@ -263,6 +316,7 @@ def run_thermo_workflow(
         Egrain (str, optional): Energy grain specification.
         dry (bool, optional): Skip execution of external programs.
         verbose (bool, optional): Verbose output. Defaults to ``False``.
+        hrd_map (dict, optional): PES.in ``[HRD]``-declared rotors (see run_PES_densdata).
 
     Returns:
         None
@@ -270,6 +324,8 @@ def run_thermo_workflow(
 
     if_hinderedrotor = thermo_methods["hinderedrotor"]
     if_anharm = thermo_methods["anharm"]
+    print(f"== thermo workflow -> {thermo_path}/  (anharm={if_anharm}"
+          + (f", HRD species: {', '.join(hrd_map)}" if hrd_map else "") + ") ==")
 
     # run density of state data
     hindrot_item_reduced_mominert_dict = run_PES_densdata(
@@ -281,6 +337,7 @@ def run_thermo_workflow(
         if_anharm=if_anharm,
         dry=dry,
         verbose=verbose,
+        hrd_map=hrd_map,
     )
 
     # prepare thermo input file reaction.dat
@@ -292,12 +349,17 @@ def run_thermo_workflow(
         hindrot_item_reduced_mominert_dict=hindrot_item_reduced_mominert_dict,
         datfile=thermo_path.absolute() / datfile,
         verbose=verbose,
+        hrd_map=hrd_map,
     )
+    _echo("write", f"{thermo_path / datfile} (thermo reaction deck)")
     if not dry:
+        _echo("exec", f"thermo {datfile} -> reaction.out")
         run_thermo(
             datfile=thermo_path.absolute() / datfile,
             verbose=verbose,
         )
+    else:
+        _echo("skip", f"thermo {datfile} [--dry]")
 
 def run_multiwell_workflow(
     PES_data:dict,
@@ -306,6 +368,7 @@ def run_multiwell_workflow(
     Egrain:str = "10   3000   4000   50000",
     dry:bool = False,
     verbose:bool = False,
+    hrd_map:dict = None,
 ):
     """Run the workflow for MultiWell master equation calculations.
 
@@ -336,6 +399,7 @@ def run_multiwell_workflow(
         if_anharm=if_anharm,
         dry=dry,
         verbose=verbose,
+        hrd_map=hrd_map,
     )
 
     # run thermo for bimolecular reaction if required

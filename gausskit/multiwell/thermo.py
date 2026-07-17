@@ -44,10 +44,11 @@ def get_thermo_lines(
     backwards_barrier:float = 0.0,
     if_ktools:float = False,
     if_tunneling:bool = False,
-    if_anharm:bool = False,
+    if_anharm = False,
     if_hinderedrotor:bool = False,
     hindrot_item_Mol_dict:dict = {},
     hindrot_item_reduced_mominert_dict:dict = {},
+    hrd_modes:list = None,
 ):
     """Generate the block describing ``mol`` for a ``thermo`` input file.
 
@@ -60,15 +61,20 @@ def get_thermo_lines(
         backwards_barrier (float, optional): Reverse barrier height.
         if_ktools (bool, optional): Use ktools formatting. Defaults to ``False``.
         if_tunneling (bool, optional): Include tunnelling information.
-        if_anharm (bool, optional): Treat anharmonic corrections.
-        if_hinderedrotor (bool, optional): Include hindered rotors.
+        if_anharm: ``False`` | ``True`` | ``"ts"`` — ``"ts"`` applies the anharmonic
+            (crp/SCTST) block only when ``mol.ts``; other species stay harmonic.
+        if_hinderedrotor (bool, optional): Include hindered rotors (legacy HINDROT path).
         hindrot_item_Mol_dict (dict, optional): Mapping of dummy names to
             hindered rotor molecules.
+        hrd_modes (list, optional): PES.in ``[HRD]``-declared fitted rotors — the paired
+            soft vib lines are emitted as hrd/Vhrd2/Bhrd1 blocks (harmonic path only).
 
     Returns:
         list[str]: Lines describing ``mol``.
     """
     lines = []
+    # tri-state anharm: "ts" means the anharm (crp) block applies to the TS only
+    anharm_here = if_anharm is True or (if_anharm == "ts" and mol.ts)
 
     if mol_type is not None:
         # ktools path passes forwards_barrier as a preformatted "energy   bond" string;
@@ -121,7 +127,7 @@ def get_thermo_lines(
     krot, ad_rot = get_rotor(thermo_path / mominert_outfile)
 
     # if run anharmonic thermo
-    if if_anharm:
+    if anharm_here:
         # count the number of k-rotor and adiabatic rotor [NOT hindered rotor!!!]
         total_dof = 1 # read external file, this takes "one vibration"
         if np.abs(krot) > 1e-12:
@@ -180,7 +186,8 @@ def get_thermo_lines(
         if np.abs(ad_rot) > 1e-12:
             total_dof += 1
         lines.append(f"{total_dof}   HAR   AMUA")
-        dof_lines = get_degrees_of_freedom_lines(mol, krot, ad_rot, if_ktools=if_ktools)
+        dof_lines = get_degrees_of_freedom_lines(mol, krot, ad_rot, if_ktools=if_ktools,
+                                                 hrd_modes=hrd_modes)
 
         # if thermo_hinderedrotor and mol has hindered rotor
         # replace the selected vibration mode with the hindered rotor DOF
@@ -207,6 +214,7 @@ def write_thermo(
     hindrot_item_reduced_mominert_dict,
     datfile:Path = Path("densum.dat"),
     verbose:bool = False,
+    hrd_map:dict = None,
 ):
     """Write the main ``thermo`` input file describing the PES.
 
@@ -285,6 +293,8 @@ def write_thermo(
 
     for n, (dummy_name, Mol, forwards_barrier) in enumerate(zip(item_list, item_Mol_list, forwards_barrier_list)):
         mol = Mol
+        # [HRD] species match is by mol name (configparser lowercases keys)
+        hrd_entry = (hrd_map or {}).get(str(item_mol_name_list[n]).lower())
 
         lines = get_thermo_lines(
             mol,
@@ -297,6 +307,7 @@ def write_thermo(
             if_hinderedrotor = if_hinderedrotor,
             hindrot_item_Mol_dict = hindrot_item_Mol_dict,
             hindrot_item_reduced_mominert_dict = hindrot_item_reduced_mominert_dict,
+            hrd_modes = hrd_entry["modes"] if hrd_entry else None,
         )
 
         reaction_lines += lines
@@ -315,6 +326,7 @@ def write_single_thermo(
     dummy_name:str,
     thermo_path:Path = Path("thermo"),
     verbose:bool = False,
+    hrd_modes:list = None,
 ):
     """Write a stand-alone ``thermo`` input file for ``mol``.
 
@@ -325,6 +337,7 @@ def write_single_thermo(
         thermo_path (Path, optional): Output directory. Defaults to ``thermo``.
         verbose (bool, optional): Emit progress information. Defaults to
             ``False``.
+        hrd_modes (list, optional): PES.in ``[HRD]``-declared rotors for this species.
 
     Returns:
         None
@@ -336,7 +349,8 @@ def write_single_thermo(
         mol,
         dummy_name = dummy_name,
         thermo_path = thermo_path,
-        mol_type = "none"
+        mol_type = "none",
+        hrd_modes = hrd_modes,
     )
 
     reaction_lines += lines
@@ -427,10 +441,20 @@ def read_electronic_partition_function(
         else:
             break
 
-    # Qelectr is temperature dependent, but usually the temperature 
-    # dependence is neglagible, and the all the numbers are same
+    # Qelectr is usually T-independent (its numbers are all equal), but it is
+    # genuinely T-dependent for species with low-lying electronic states -- e.g.
+    # OH (2-Pi spin-orbit, ~140 cm-1), O2, NO -- where q_elec rises with T. That
+    # is physically correct and must NOT abort the workflow. KTOOLS never uses
+    # this scalar (it writes the electronic ladder into its deck directly); only
+    # the MULTIWELL deck writer consumes it. So warn and fall back to the low-T
+    # value instead of asserting T-independence.
     qele = np.array(qele_list)
-    assert np.allclose(qele, np.ones_like(qele) * qele[0]), f"Electronic partition function is T dependent! {qele}"
+    if not np.allclose(qele, np.ones_like(qele) * qele[0]):
+        print(
+            f"{module:11} WARNING: electronic partition function is T-dependent "
+            f"(low-lying electronic states): {qele}; using q_elec(T_min)={qele[0]:.4f}. "
+            "KTOOLS ignores this scalar; MULTIWELL uses the low-T value."
+        )
 
     return float(qele[0])
 
