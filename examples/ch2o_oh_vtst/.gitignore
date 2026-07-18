@@ -1,0 +1,3 @@
+# regenerable engine outputs (`make rates`)
+rates/
+# kt.png IS committed (the README embeds it as the headline figure); `make plot` refreshes it
