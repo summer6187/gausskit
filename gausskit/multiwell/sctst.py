@@ -125,6 +125,7 @@ def write_parsctst(
     separable_modes:list[int]=[],
     datfile:Path = Path("parsctst.dat"),
     verbose:bool = False,
+    hrd_modes:list = None,
 ):
     """Write the input file for the ``parsctst`` tunnelling program.
 
@@ -134,11 +135,17 @@ def write_parsctst(
         barrier (list[float], optional): Forward and reverse barriers in
             kcal/mol.
         Egrain (str, optional): Energy grain specification.
-        separable_modes (list[int], optional): Modes treated as separable.
+        separable_modes (list[int], optional): Modes treated as separable
+            (indices into the real-mode list after the imaginary mode is removed;
+            emitted as plain ``vib`` lines).
         datfile (Path, optional): Output file path. Defaults to
             ``parsctst.dat``.
         verbose (bool, optional): Print progress messages. Defaults to
             ``False``.
+        hrd_modes (list, optional): PES.in ``[HRD]``-declared fitted rotors — the
+            paired soft modes leave the coupled X-matrix and are emitted as
+            SEPARABLE ``hrd``/``Vhrd2``/``Bhrd1`` blocks (overrides
+            ``separable_modes``).
 
     Returns:
         None
@@ -180,6 +187,24 @@ def write_parsctst(
     full_anharm_matrix = np.delete(full_anharm_matrix, img_index, axis=1)
     anharm_matrix = np.tril(full_anharm_matrix)
 
+    # [HRD]: pair the declared fitted rotors to real modes by frequency and pull them
+    # out of the coupled X-matrix as separable Vhrd2 rotors. A large-amplitude soft mode is
+    # INVALID under VPT2 -- its large negative diagonal x_ii folds the anharmonic level ladder
+    # over (Birge-Sponer turnover) and truncates the DOS -- so it cannot stay in the coupled
+    # VPT2 manifold; the scan-fitted Vhrd2 rotor is its correct replacement. The STIFF modes
+    # keep their full VPT2 X-matrix (this does NOT replace VPT2, it fixes where VPT2 breaks).
+    sep_hrd = None                                        # index-aligned with separable_modes
+    if hrd_modes:
+        from gausskit.utils.rotor.result import pair_modes_to_freqs
+        pairs = pair_modes_to_freqs(harm_freq, hrd_modes, label=fname or mol.name)
+        # ascending frequency order -> separable block indices 1..N softest-first
+        separable_modes = sorted(pairs, key=lambda j: harm_freq[j])
+        sep_hrd = [pairs[j] for j in separable_modes]
+        for j, m in zip(separable_modes, sep_hrd):
+            print(f"  HRD    {fname}: coupled mode {harm_freq[j]:.4f} cm-1 -> separable "
+                  f"hrd (mode{m['mode']}, B={m['B_cm']:.6f}, {len(m['CV_Vhrd2'])} CV) "
+                  "-- dropped from the X-matrix")
+
     # remove separable modes if given
     if separable_modes:
         sep_harm_freq = []
@@ -212,11 +237,19 @@ def write_parsctst(
     lines.append(" ")
     lines.append(f"{len(separable_modes)}    'AMUA'")
 
-    # formating separable mode if given
+    # formating separable mode if given: hrd/Vhrd2/Bhrd1 blocks for [HRD]-declared
+    # rotors, plain vib lines otherwise
     if separable_modes:
         sep_mode_lines = []
-        for n_index, harm_freq in enumerate(sep_harm_freq):
-            line = f"{n_index+1}   vib  {harm_freq:.4f}  0.0  1  ! Active separable mode"
+        for n_index, sep_freq in enumerate(sep_harm_freq):
+            if sep_hrd is not None:
+                from gausskit.multiwell.dos import hrd_block
+                m = sep_hrd[n_index]
+                blk = {"CV": np.array(m["CV_Vhrd2"]), "B": m["B_cm"], "nsym": m["nsym"]}
+                line = hrd_block(n_index + 1, blk,
+                                 f"separable scan-matched soft mode ({sep_freq:.2f} cm-1)")
+            else:
+                line = f"{n_index+1}   vib  {sep_freq:.4f}  0.0  1  ! Active separable mode"
             sep_mode_lines.append(line)
         lines += sep_mode_lines
 
@@ -549,7 +582,12 @@ def fix_crp_file(filename, add_text="GOOD   VPT4A"):
         None
     """
     lines = Path(filename).read_text().splitlines()
-    egr = re.compile(r"^\s*[\d.]+(?:\s+[\d.]+){3,}\s*$")   # >=4 numeric fields, no trailing keyword
+    # >=4 numeric fields, no trailing keyword. Fields may be SIGNED / scientific: a submerged or
+    # near-zero barrier gives a negative forward height Vf on this grid line (e.g. CFCl3+Na, Vf=-12.21),
+    # which a digits-and-dots-only pattern would miss -> the GOOD/VPTx fix silently skips it and THERMO
+    # then fails to parse the qcrp. Allow a leading sign and exponent per field.
+    _num = r"[-+]?[\d.]+(?:[eE][-+]?\d+)?"
+    egr = re.compile(rf"^\s*{_num}(?:\s+{_num}){{3,}}\s*$")
     nsum = 0
     done = False
     out = []

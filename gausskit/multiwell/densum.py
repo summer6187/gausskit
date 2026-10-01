@@ -17,6 +17,7 @@ def get_degrees_of_freedom_lines(
     krot:float,
     ad_rot:float,
     if_ktools:bool = False,
+    hrd_modes:list = None,
 ):
     """Create the degree-of-freedom block for ``densum``.
 
@@ -26,6 +27,9 @@ def get_degrees_of_freedom_lines(
         ad_rot (float): 2D adiabatic rotor constant in cm⁻¹.
         if_ktools (bool, optional): Use ``kro``/``jro`` labels when
             ``True``. Defaults to ``False``.
+        hrd_modes (list, optional): fitted rotor modes (from a PES.in ``[HRD]``
+            declaration) — the paired soft ``vib`` lines are replaced 1:1 with
+            ``hrd``/``Vhrd2``/``Bhrd1`` blocks (one DOF slot each).
 
     Returns:
         list[str]: Lines to be appended to ``densum.dat``.
@@ -46,6 +50,18 @@ def get_degrees_of_freedom_lines(
     i = 0
     for i in range(1, len(nonimg_freq)+1):
         lines.append(f" {i:3d}   {rottype:6} {nonimg_freq[i-1]:12.4f}   0.0   1")
+
+    # [HRD]: swap the paired soft vib lines for scan-fitted general hindered rotors.
+    if hrd_modes:
+        from gausskit.multiwell.dos import hrd_block
+        from gausskit.utils.rotor.result import pair_modes_to_freqs
+        pairs = pair_modes_to_freqs(nonimg_freq, hrd_modes, label=mol.name)
+        for j, m in sorted(pairs.items()):
+            blk = {"CV": np.array(m["CV_Vhrd2"]), "B": m["B_cm"], "nsym": m["nsym"]}
+            lines[j] = "  " + hrd_block(j + 1, blk, "scan-matched soft mode ([HRD])")
+            print(f"  HRD    {mol.name}: vib {nonimg_freq[j]:.4f} cm-1 (DOF {j+1}) -> "
+                  f"hrd/Vhrd2/Bhrd1 (mode{m['mode']}, B={m['B_cm']:.6f}, "
+                  f"{len(m['CV_Vhrd2'])} CV, nsym={m['nsym']})")
 
     if if_ktools:
         rottype = "kro"
@@ -75,6 +91,7 @@ def write_densum(
     Egrain="10   3000   4000   50000",
     datfile:Path = Path("densum.dat"),
     verbose:bool = False,
+    hrd_modes:list = None,
 ):
     """
     Write input file for densum program
@@ -104,7 +121,7 @@ def write_densum(
     lines.append(str(Egrain))
 
     dof_lines = get_degrees_of_freedom_lines(
-        mol, krot, ad_rot
+        mol, krot, ad_rot, hrd_modes=hrd_modes
     )
     lines += dof_lines
 

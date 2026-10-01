@@ -301,6 +301,21 @@ def get_PES_data(database, PES_dict, PES_num_list, PES_methods, verbose=False):
     return PES_data
 
 
+def config_get_anharm(config, section, key="anharm"):
+    """Tri-state anharm reader: ``False`` | ``True`` | ``"ts"``.
+
+    ``ts`` = anharmonic (SCTST/crp) treatment for TS species only, harmonic blocks for
+    wells/reactants — the "isolate the TS treatment" model. Falls back to ``False`` when
+    the key is absent (matching config_getboolean).
+    """
+    if not config.has_option(section, key):
+        return False
+    raw = config.get(section, key).strip().lower()
+    if raw == "ts":
+        return "ts"
+    return config.getboolean(section, key)
+
+
 def thermo_method_warning(thermo_methods, PES_methods):
     """Check for incompatible thermo settings.
 
@@ -311,12 +326,14 @@ def thermo_method_warning(thermo_methods, PES_methods):
     Returns:
         None
     """
-    if thermo_methods["anharm"]:
+    if thermo_methods["anharm"]:                     # True or "ts"
         if thermo_methods["tunneling"]:
             print("WARNING, Thermo anharm conflict with tunneling")
             print("Exiting program!")
             exit()
         if thermo_methods["hinderedrotor"]:
+            # the LEGACY Gaussian-HINDROT path conflicts with anharm; the new [HRD]
+            # (scan-fitted Vhrd2 rotors, emitted as separable modes) combines fine.
             print("WARNING, Thermo anharm conflict with thermo_hinderedrotor")
             print("Exiting program!")
             exit()
@@ -403,7 +420,7 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
         thermo_dir = Thermo_method["dir"]
         thermo_tunneling = config_getboolean(config, "Thermo", "tunneling")
         thermo_hinderedrotor = config_getboolean(config, "Thermo", "hinderedrotor")
-        thermo_anharm = config_getboolean(config, "Thermo", "anharm")
+        thermo_anharm = config_get_anharm(config, "Thermo", "anharm")   # False | True | "ts"
         if "adj_barrier" in Thermo_method:
             thermo_adj_barrier = list(Thermo_method["adj_barrier"].split())
         else:
@@ -479,6 +496,21 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
             "trails": multiwell_trail_line,
         }
 
+    # [HRD] -- scan-fitted hindered rotors declared per species (written by
+    # `gausskit utils rotor patch`): species_name: path/to/rotor_result.json.
+    # Paths resolve like `database:` (relative to the CWD). configparser lowercases
+    # option keys, so species matching downstream is case-insensitive.
+    hrd_map = None
+    if "HRD" in config.sections():
+        from gausskit.utils.rotor.result import load_fitted_modes
+        hrd_map = {}
+        for key, path in config_section_map(config, "HRD").items():
+            modes = load_fitted_modes(Path(path))
+            hrd_map[key.lower()] = {"path": str(path), "modes": modes}
+            freqs = ", ".join(f"{m['freq_cm']:.1f}" if m["freq_cm"] is not None else "?"
+                              for m in modes)
+            print(f"[HRD] {key}: {len(modes)} fitted modes ({freqs} cm-1) from {path}")
+
     PES_datasets = {}
     # parse the rest sections
     print(
@@ -499,9 +531,24 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
             )
             PES_datasets[section] = PES_data
 
+    # [HRD] safety: a declared species that matches no PES species would silently produce a
+    # harmonic deck (a typo in the [HRD] key). Warn loudly (non-fatal) naming the candidates.
+    if hrd_map:
+        seen = {PES_datasets[s][num]["PES_items"][it]["mol_name"].lower()
+                for s in PES_datasets for num in PES_datasets[s]
+                for it in PES_datasets[s][num]["PES_items"]}
+        for key in hrd_map:
+            if key not in seen:
+                print(f"[HRD] WARNING: declared species '{key}' matches no PES species "
+                      f"{sorted(seen)} -- it stays harmonic (check the [HRD] key spelling).")
+
     # ktools calc
     if calc_ktools:
         print("-----------ktools calculation-----------")
+        if hrd_map:
+            print("[HRD] WARNING: declared HRDs are NOT applied to KTOOLS decks -- native "
+                  "ktools segfaults on Vhrd2 rotors (uhrlev ev(2000) overflow). Use the "
+                  "`gausskit vtst --dens` engine route for HRD-corrected capture rates.")
         for _ktools_PES in ktools_list:
             PES_data = PES_datasets[_ktools_PES]
             for PES_num in PES_data:
@@ -520,7 +567,8 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
             PES_data = PES_datasets[_thermo_PES]
             thermo_path = Path(thermo_dir) / f"thermo_{_thermo_PES}"
             print("thermo calculation of", _thermo_PES)
-            run_thermo_workflow(PES_data, thermo_methods, thermo_path, dry=dry, verbose=verbose)
+            run_thermo_workflow(PES_data, thermo_methods, thermo_path, dry=dry,
+                                verbose=verbose, hrd_map=hrd_map)
 
     # multiwell calc
     if calc_multiwell:
@@ -529,7 +577,8 @@ def PES_parser(config, dry:bool=False, verbose:bool=False):
             PES_data = PES_datasets[_multiwell_PES]
             multiwell_path = Path(multiwell_dir) / f"multiwell_{_multiwell_PES}"
             print("multiwell calculation of", _multiwell_PES)
-            run_multiwell_workflow(PES_data, multiwell_methods, multiwell_path, dry=dry, verbose=verbose)
+            run_multiwell_workflow(PES_data, multiwell_methods, multiwell_path, dry=dry,
+                                   verbose=verbose, hrd_map=hrd_map)
 
 
 if __name__ == "__main__":

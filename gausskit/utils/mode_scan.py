@@ -57,6 +57,27 @@ def load_ts(structure, log=None):
     return harm, Lg, np.asarray(freqs)
 
 
+def emit_rectilinear_mode(obj, modes, idx, qgrid, mdir, *, freq, route,
+                          charge_mult="0 2", mem="16GB", nproc=16, prefix="sm", label=None):
+    """Write the rigid rectilinear scan x(Q)=x0+(L/sqrt(m))Q of a SINGLE Gaussian mode `idx`
+    into directory `mdir` (one gjf per Q point, title '... Q=+X.XXX'). Returns [(filename, Q)].
+
+    Factored out of `generate_mode_scan` so a caller (e.g. `gausskit utils rotor scan`) can drive
+    one Gaussian index into an arbitrary directory; the title Q-convention is the one
+    `extract_scan.py` / `rotor.readback.read_rectilinear` parse back.
+    """
+    os.makedirs(mdir, exist_ok=True)
+    label = os.path.basename(mdir.rstrip("/")) if label is None else label
+    out = []
+    for k, Q in enumerate(np.asarray(qgrid, float)):
+        atoms = obj.displace_along_mode(int(idx), float(Q), modes=modes)      # gausskit object
+        name = f"{prefix}_{k:02d}.gjf"
+        _write_gjf(os.path.join(mdir, name), atoms, route, charge_mult, mem, nproc,
+                   f"{label} ({freq:.1f} cm-1) Q={Q:+.3f}")
+        out.append((name, float(Q)))
+    return out
+
+
 def generate_mode_scan(structure, log=None, n_modes=2, qgrid=None, route=DEFAULT_ROUTE,
                        charge_mult="0 2", mem="16GB", nproc=16, outdir="mode_scan"):
     """Write the rigid-scan input structures along the `n_modes` lowest REAL modes of `structure`
@@ -72,12 +93,10 @@ def generate_mode_scan(structure, log=None, n_modes=2, qgrid=None, route=DEFAULT
     written = []
     for mi, idx in enumerate(picks, start=1):
         mdir = os.path.join(outdir, f"mode{mi}")
-        os.makedirs(mdir, exist_ok=True)
-        for k, Q in enumerate(qgrid):
-            atoms = obj.displace_along_mode(int(idx), float(Q), modes=modes)   # gausskit object
-            name = f"sm{mi}_{k:02d}.gjf"
-            _write_gjf(os.path.join(mdir, name), atoms, route, charge_mult, mem, nproc,
-                       f"mode {mi} ({freqs[idx]:.1f} cm-1) Q={Q:+.3f}")
+        emitted = emit_rectilinear_mode(obj, modes, int(idx), qgrid, mdir, freq=float(freqs[idx]),
+                                        route=route, charge_mult=charge_mult, mem=mem, nproc=nproc,
+                                        prefix=f"sm{mi}", label=f"mode {mi}")
+        for k, (name, Q) in enumerate(emitted):
             written.append(os.path.join(f"mode{mi}", name))
             manifest.append(f"{mi},{freqs[idx]:.2f},{k},{Q:+.3f},mode{mi}/{name}")
     with open(os.path.join(outdir, "manifest.csv"), "w") as f:
